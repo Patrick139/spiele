@@ -58,7 +58,8 @@ function tNeu(seed) {
     punkte: 0, linien: 0, level: 1, kombo: -1, b2b: false, tot: false, gewonnen: false,
     fallT: 0, sperrT: 0, sperrResets: 0, weich: false, eingehend: [], ausgehend: [], ev: [],
     gesetzt: 0, eierGelegt: 0, eierErhalten: 0, zeit: 0,
-    tor: null, geworfen: [], ausgehendSteine: [], gewuerfe: 0, steineErhalten: 0
+    tor: null, geworfen: [], ausgehendSteine: [], gewuerfe: 0, steineErhalten: 0,
+    fremd: null, draussen: null              // Modus Einbauen: Stein des Freundes in deinem Feld / dein Stein gerade beim Freund
   };
   for (var y = 0; y < T_H + T_VERDECKT; y++) s.feld.push(tLeereZeile());
   while (s.schlange.length < T_VORSCHAU + 2) s.schlange.push(tNaechsterTyp(s));
@@ -95,6 +96,7 @@ function tSpawn(s, typ, rot) {
   rot = rot || 0;
   while (s.schlange.length < T_VORSCHAU + 2) s.schlange.push(tNaechsterTyp(s));
   s.fallT = 0; s.sperrT = 0; s.sperrResets = 0;
+  if (s.fremd && (tUeberlappt(s.fremd, typ, rot, 3, 0) || tUeberlappt(s.fremd, typ, rot, 3, -1))) tFremdWeg(s);   // fremder Stein steht im Einstieg: er verpufft
   if (tKollidiert(s, typ, rot, 3, 0)) {
     if (vomFreund && !tKollidiert(s, typ, rot, 3, -1)) { s.akt = { typ: typ, rot: rot, x: 3, y: -1 }; return; }
     if (vomFreund) { s.ev.push({ art: "verpufft", typ: typ }); tSpawn(s); return; }      // kein Platz: der geworfene Stein verpufft, du stirbst nicht daran
@@ -112,7 +114,7 @@ function tSperrReset(s) { if (tAmBoden(s) && s.sperrResets < T_SPERR_RESETS) { s
 function tBewege(s, dx) {
   if (s.tot || !s.akt) return false;
   var a = s.akt;
-  if (tKollidiert(s, a.typ, a.rot, a.x + dx, a.y)) return false;
+  if (!tFrei(s, a, a.rot, a.x + dx, a.y)) return false;
   a.x += dx; tSperrReset(s); s.ev.push({ art: "schieb" });
   return true;
 }
@@ -121,7 +123,7 @@ function tDrehe(s, richtung) {               // richtung +1 = rechts herum, -1 =
   var a = s.akt, nr = (a.rot + richtung + 4) % 4;
   for (var i = 0; i < T_KICKS.length; i++) {
     var kx = T_KICKS[i][0], ky = T_KICKS[i][1];
-    if (!tKollidiert(s, a.typ, nr, a.x + kx, a.y + ky)) {
+    if (tFrei(s, a, nr, a.x + kx, a.y + ky)) {
       a.rot = nr; a.x += kx; a.y += ky; tSperrReset(s); s.ev.push({ art: "dreh" });
       return true;
     }
@@ -131,7 +133,7 @@ function tDrehe(s, richtung) {               // richtung +1 = rechts herum, -1 =
 function tWeichSchritt(s) {                  // eine Zeile tiefer, 1 Punkt
   if (s.tot || !s.akt) return false;
   var a = s.akt;
-  if (tKollidiert(s, a.typ, a.rot, a.x, a.y + 1)) return false;
+  if (!tFrei(s, a, a.rot, a.x, a.y + 1)) return false;
   a.y++; s.punkte += 1; s.fallT = 0;
   return true;
 }
@@ -142,11 +144,12 @@ function tGeisterY(s) {                      // Zeile, auf der der Stein landen 
 }
 function tHart(s) {                          // fallen lassen und sofort festsetzen
   if (s.tot || !s.akt) return 0;
-  var a = s.akt, y0 = a.y, y = tGeisterY(s), d = y - y0;
+  var a = s.akt, y0 = a.y;
+  while (tFrei(s, a, a.rot, a.x, a.y + 1)) a.y++;
+  var d = a.y - y0;
   s.punkte += 2 * d;
-  s.ev.push({ art: "hart", typ: a.typ, rot: a.rot, x: a.x, y0: y0, y1: y });
-  a.y = y;
-  tFestsetzen(s);
+  s.ev.push({ art: "hart", typ: a.typ, rot: a.rot, x: a.x, y0: y0, y1: a.y });
+  if (tAmBoden(s)) tFestsetzen(s);           // liegt er nur auf dem anderen fallenden Stein, faellt er weiter, sobald Platz ist
   return d;
 }
 function tHalten(s) {
@@ -172,7 +175,7 @@ function tSchritt(s, dt) {
   var guard = 0;
   while (s.fallT >= iv && guard++ < 40) {
     s.fallT -= iv;
-    if (tAmBoden(s)) break;
+    if (!tFrei(s, s.akt, s.akt.rot, s.akt.x, s.akt.y + 1)) break;     // Boden, Feld oder der andere fallende Stein
     s.akt.y++; if (s.weich) s.punkte += 1;
   }
   if (tAmBoden(s)) {
@@ -183,14 +186,20 @@ function tSchritt(s, dt) {
 
 function tFestsetzen(s) {
   var a = s.akt, zellen = tZellen(a.typ, a.rot, a.x, a.y), i, hoch = true;
-  for (i = 0; i < 4; i++) {
-    var cx = zellen[i][0], cy = zellen[i][1];
-    if (cy >= T_VERDECKT) hoch = false;
-    if (cy >= 0) s.feld[cy][cx] = T_ZAHL[a.typ];
-  }
-  s.gesetzt++;
-  s.ev.push({ art: "sperre", typ: a.typ, zellen: zellen });
+  for (i = 0; i < 4; i++) if (zellen[i][1] >= T_VERDECKT) hoch = false;
   s.akt = null;
+  tEinbauen(s, a.typ, zellen);
+  s.halteOk = true;
+  if (hoch) tSterben(s);
+  if (!s.tot) tSpawn(s);
+}
+
+// Stein ins Feld schreiben, volle Zeilen raeumen, Punkte und Eier: gilt fuer den eigenen und den fremden Stein (Zeilen zaehlen fuer den Feldbesitzer).
+function tEinbauen(s, typ, zellen) {
+  var i;
+  for (i = 0; i < 4; i++) { var cx = zellen[i][0], cy = zellen[i][1]; if (cy >= 0) s.feld[cy][cx] = T_ZAHL[typ]; }
+  s.gesetzt++;
+  s.ev.push({ art: "sperre", typ: typ, zellen: zellen });
   // volle Zeilen
   var voll = [];
   for (var y = 0; y < T_H + T_VERDECKT; y++) {
@@ -224,9 +233,7 @@ function tFestsetzen(s) {
     s.kombo = -1;
     tEierEinfuegen(s);
   }
-  s.halteOk = true;
-  if (hoch) tSterben(s);
-  if (!s.tot) tSpawn(s);
+  tPlatzMachen(s);
 }
 
 // Ankommende Eier: jede Gruppe eine Zeile mit einer Luecke; hoechstens T_EIER_MAX Zeilen je Stein.
@@ -255,8 +262,10 @@ function tEierAnzahl(s) { var n = 0; for (var i = 0; i < s.eingehend.length; i++
 function tAbbild(s) {
   var rows = [], y, x;
   for (y = T_VERDECKT; y < T_H + T_VERDECKT; y++) rows.push(s.feld[y].slice());
-  if (s.akt) tZellen(s.akt.typ, s.akt.rot, s.akt.x, s.akt.y).forEach(function (c) {
-    var yy = c[1] - T_VERDECKT; if (yy >= 0 && yy < T_H) rows[yy][c[0]] = T_ZAHL[s.akt.typ];
+  [s.akt, s.fremd].forEach(function (st) {
+    if (st) tZellen(st.typ, st.rot, st.x, st.y).forEach(function (c) {
+      var yy = c[1] - T_VERDECKT; if (yy >= 0 && yy < T_H) rows[yy][c[0]] = T_ZAHL[st.typ];
+    });
   });
   return rows.map(function (r) { return r.join(""); }).join("");
 }
@@ -303,4 +312,104 @@ function tSteinKommt(s, typ, rot) {      // der Freund hat einen Stein geworfen
   s.geworfen.push({ typ: typ, rot: ((rot | 0) % 4 + 4) % 4 }); s.steineErhalten++;
   s.ev.push({ art: "stein", typ: typ });
   return true;
+}
+
+// Oberste zwei sichtbare Zeilen belegt? Nur das Feld, ohne fallende Steine (fuer "Sein Feld ist zu voll" beim Ruebergeben).
+function tObenBelegt(s) {
+  for (var y = T_VERDECKT; y < T_VERDECKT + 2; y++) for (var x = 0; x < T_B; x++) if (s.feld[y][x]) return true;
+  return false;
+}
+
+// ---- Einbauen: dein Stein geht durchs Tor ins Feld des Freundes, du steuerst ihn dort -----------------------------------
+// Das Feld gehoert dem Freund, sein Handy rechnet den fremden Stein (s.fremd). Beide fallenden Steine blockieren sich
+// gegenseitig, festgesetzt wird aber nur auf Feld oder Boden: liegt einer auf dem anderen, wartet er und faellt dann weiter.
+function tUeberlappt(st, typ, rot, x, y) {
+  if (!st) return false;
+  var a = tZellen(typ, rot, x, y), b = tZellen(st.typ, st.rot, st.x, st.y);
+  for (var i = 0; i < 4; i++) for (var k = 0; k < 4; k++) if (a[i][0] === b[k][0] && a[i][1] === b[k][1]) return true;
+  return false;
+}
+function tFrei(s, st, rot, x, y) {           // Platz im Feld und nicht vom anderen fallenden Stein belegt
+  if (tKollidiert(s, st.typ, rot, x, y)) return false;
+  return !tUeberlappt(st === s.akt ? s.fremd : s.akt, st.typ, rot, x, y);
+}
+function tPlatzMachen(s) {                   // nach Zeilen oder Eiern: fallende Steine, die jetzt im Feld stecken, nach oben schieben
+  [s.akt, s.fremd].forEach(function (st) {
+    if (!st || !tKollidiert(s, st.typ, st.rot, st.x, st.y)) return;
+    for (var k = 1; k <= 4; k++) if (tFrei(s, st, st.rot, st.x, st.y - k)) { st.y -= k; return; }
+    if (st === s.fremd) tFremdWeg(s); else tSterben(s);
+  });
+}
+
+// Werfer: Stein verlaesst dein Feld. Dein naechster Stein kommt erst, wenn er beim Freund eingebaut ist (tDraussenFertig).
+function tWurfRaus(s) {
+  if (!tWurfMoeglich(s)) return null;
+  var a = s.akt, z = tZellen(a.typ, a.rot, a.x, a.y), w = { typ: a.typ, rot: a.rot, y: a.y };
+  s.gewuerfe++; s.ausgehendSteine.push(w); s.draussen = w;
+  s.ev.push({ art: "wurf", typ: a.typ, rot: a.rot, zellen: z, ein: true });
+  s.akt = null; s.halteOk = true;
+  return w;
+}
+function tDraussenFertig(s) { if (!s.draussen) return; s.draussen = null; if (!s.tot && !s.akt) tSpawn(s); }
+function tFremdStart(typ, rot, y) {          // Lage im Feld des Freundes: gleiche Zeilen, ganz am linken Rand
+  rot = ((rot | 0) % 4 + 4) % 4;
+  var minx = 9; T_FORM[typ][rot].forEach(function (c) { if (c[0] < minx) minx = c[0]; });
+  return { typ: typ, rot: rot, x: -minx, y: y | 0, fallT: 0, sperrT: 0, sperrResets: 0 };
+}
+
+// Feldbesitzer: der Stein des Freundes kommt durchs Tor
+function tFremdKommt(s, typ, rot, y) {
+  if (s.tot || T_TYPEN.indexOf(typ) < 0) return false;
+  var st = tFremdStart(typ, rot, y);
+  if (s.fremd || !tFrei(s, st, st.rot, st.x, st.y)) {               // kein Platz am Tor: der Stein verpufft
+    s.ev.push({ art: "verpufft", typ: typ }); s.ev.push({ art: "fremdFertig", verpufft: true });
+    return false;
+  }
+  s.fremd = st; s.steineErhalten++;
+  s.ev.push({ art: "stein", typ: typ, ein: true });
+  return true;
+}
+function tFremdAmBoden(s) { var f = s.fremd; return tKollidiert(s, f.typ, f.rot, f.x, f.y + 1); }
+function tFremdSperrReset(s) { var f = s.fremd; if (tFremdAmBoden(s) && f.sperrResets < T_SPERR_RESETS) { f.sperrT = 0; f.sperrResets++; } }
+function tFremdBefehl(s, a) {                // Befehl vom Freund: links, rechts, runter, dreh, drehL, hart
+  var f = s.fremd, i;
+  if (!f || s.tot) return false;
+  if (a === "links" || a === "rechts") {
+    var dx = a === "links" ? -1 : 1;
+    if (!tFrei(s, f, f.rot, f.x + dx, f.y)) return false;
+    f.x += dx; tFremdSperrReset(s); return true;
+  }
+  if (a === "dreh" || a === "drehL") {
+    if (f.typ === "O") return false;
+    var nr = (f.rot + (a === "dreh" ? 1 : -1) + 4) % 4;
+    for (i = 0; i < T_KICKS.length; i++) if (tFrei(s, f, nr, f.x + T_KICKS[i][0], f.y + T_KICKS[i][1])) { f.rot = nr; f.x += T_KICKS[i][0]; f.y += T_KICKS[i][1]; tFremdSperrReset(s); return true; }
+    return false;
+  }
+  if (a === "runter") { if (!tFrei(s, f, f.rot, f.x, f.y + 1)) return false; f.y++; f.fallT = 0; return true; }
+  if (a === "hart") {
+    var y0 = f.y;
+    while (tFrei(s, f, f.rot, f.x, f.y + 1)) f.y++;
+    s.ev.push({ art: "hart", typ: f.typ, rot: f.rot, x: f.x, y0: y0, y1: f.y });
+    if (tFremdAmBoden(s)) tFremdEinbauen(s);
+    return true;
+  }
+  return false;
+}
+function tFremdSchritt(s, dt) {              // Schwerkraft und Sperrzeit fuer den fremden Stein (Tempo deiner Stufe)
+  var f = s.fremd;
+  if (!f || s.tot) return;
+  var iv = tFallZeit(s.level), guard = 0;
+  f.fallT += dt;
+  while (f.fallT >= iv && guard++ < 40) { f.fallT -= iv; if (!tFrei(s, f, f.rot, f.x, f.y + 1)) break; f.y++; }
+  if (tFremdAmBoden(s)) { f.sperrT += dt; if (f.sperrT >= T_SPERRZEIT) tFremdEinbauen(s); } else f.sperrT = 0;
+}
+function tFremdEinbauen(s) {
+  var f = s.fremd; s.fremd = null;
+  tEinbauen(s, f.typ, tZellen(f.typ, f.rot, f.x, f.y));
+  s.ev.push({ art: "fremdFertig", verpufft: false });
+}
+function tFremdWeg(s) {
+  if (!s.fremd) return;
+  var f = s.fremd; s.fremd = null;
+  s.ev.push({ art: "verpufft", typ: f.typ }); s.ev.push({ art: "fremdFertig", verpufft: true });
 }

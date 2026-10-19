@@ -219,6 +219,15 @@ var ZEICH = {
       tZellen(a2.typ, a2.rot, a2.x, a2.y).forEach(function (q) { if (q[1] >= T_VERDECKT) ZEICH.glow(ctx, L.bx + (q[0] + 0.5) * c, L.by + (q[1] - T_VERDECKT + 0.5) * c, c * 1.1, FARBE_GLUEH[col]); });
       tZellen(a2.typ, a2.rot, a2.x, a2.y).forEach(function (q) { if (q[1] >= T_VERDECKT) ZEICH.block(ctx, L.bx + q[0] * c, L.by + (q[1] - T_VERDECKT) * c, c, col); });
     }
+    if (s.fremd && !s.tot) {                                                                // Stein des Freundes in deinem Feld (Modus Einbauen): rosa Rand
+      var fr = s.fremd, fcol = T_ZAHL[fr.typ];
+      tZellen(fr.typ, fr.rot, fr.x, fr.y).forEach(function (q) {
+        if (q[1] < T_VERDECKT) return;
+        var px = L.bx + q[0] * c, py = L.by + (q[1] - T_VERDECKT) * c;
+        ZEICH.glow(ctx, px + c / 2, py + c / 2, c * 1.1, "#ff6e96"); ZEICH.block(ctx, px, py, c, fcol);
+        ctx.strokeStyle = "#ff6e96"; ctx.lineWidth = 2.5; ZEICH.rr(ctx, px + 1.5, py + 1.5, c - 3, c - 3, c * 0.18); ctx.stroke();
+      });
+    }
     for (i = 0; i < FX.blitze.length; i++) {                                                // Zeilenblitze
       var bz = FX.blitze[i], f = 1 - bz.t / 0.4;
       ctx.globalAlpha = f; ctx.fillStyle = "#fff"; ctx.fillRect(L.bx, L.by + bz.y * c + c * 0.5 * (1 - f), bw, c * f);

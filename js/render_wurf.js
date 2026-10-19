@@ -2,6 +2,7 @@
 // Erweitert ZEICH und FX aus render.js (muss danach geladen werden). Kein Modul.
 
 ZEICH.wurf = false;
+ZEICH.einbau = false;                                 // Modus Einbauen: dein Stein wird im Feld des Freundes gesteuert
 ZEICH.setWurf = function (an) { this.wurf = !!an; this.groesse(); };
 
 ZEICH.groesseWurf = function () {
@@ -29,7 +30,13 @@ FX.fluege = [];
     altEreignis.call(this, e, s);
     var L = ZEICH.lay, c = L.c;
     if (!L.wurf) return;
-    if (e.art === "wurf") {
+    if (e.art === "wurf" && e.ein) {
+      this.text("RÜBER!", L.wx + L.luecke / 2, L.by + 6 * c, "#ffb36b", Math.min(30, c * 1.5));
+    } else if (e.art === "stein" && e.ein) {
+      this.text("Stein vom Freund!", L.bx + 5 * c, L.by + 3 * c, "#ff8a9a", Math.min(24, c * 1.1));
+    } else if (e.art === "eingebaut") {
+      this.text(e.verpufft ? "Verpufft" : "Eingebaut!", L.fx + 5 * c, L.by + 7 * c, e.verpufft ? "#cbbcff" : "#7dffb5", Math.min(26, c * 1.2));
+    } else if (e.art === "wurf") {
       var mx = 0, my = 0; e.zellen.forEach(function (q) { mx += q[0]; my += q[1]; });
       this.fluege.push({ typ: e.typ, rot: e.rot, x0: L.bx + (mx / 4 + 0.5) * c, y0: L.by + (my / 4 - T_VERDECKT + 0.5) * c, x1: L.fx + 5 * c, y1: L.by + 1.2 * c, t: 0, dauer: 0.45 });
       this.text("RÜBER!", L.wx + L.luecke / 2, L.by + 6 * c, "#ffb36b", Math.min(30, c * 1.5));
@@ -83,6 +90,22 @@ ZEICH.fremdesFeld = function (ctx, g, L) {
   ctx.stroke();
   var ab = g.abbild || "";
   for (i = 0; i < ab.length; i++) { var v = ab.charCodeAt(i) - 48; if (v > 0 && v <= 8) this.block(ctx, x + (i % T_B) * c, y + Math.floor(i / T_B) * c, c, v); }
+  if (g.fremd && !g.tot && T_FORM[g.fremd[0]]) {                                     // dein Stein beim Freund: Schatten und heller Rand
+    var f = g.fremd, zs = tZellen(f[0], f[1] | 0, f[2] | 0, f[3] | 0), eig = {};
+    zs.forEach(function (q) { eig[q[0] + "," + q[1]] = 1; });
+    var belegt = function (qx, qy) {
+      if (qx < 0 || qx >= T_B || qy >= T_H + T_VERDECKT) return true;
+      if (qy < T_VERDECKT || eig[qx + "," + qy]) return false;
+      return ab.charAt((qy - T_VERDECKT) * T_B + qx) !== "0";
+    };
+    var d = 0;
+    while (d < T_H + T_VERDECKT && zs.every(function (q) { return !belegt(q[0], q[1] + d + 1); })) d++;
+    var col = T_ZAHL[f[0]];
+    zs.forEach(function (q) {
+      var qy = q[1] + d - T_VERDECKT; if (d > 0 && qy >= 0) { ctx.strokeStyle = PALETTE[col][0]; ctx.globalAlpha = 0.55; ctx.lineWidth = 2; ZEICH.rr(ctx, x + q[0] * c + 2, y + qy * c + 2, c - 4, c - 4, c * 0.18); ctx.stroke(); ctx.globalAlpha = 1; }
+      var py = q[1] - T_VERDECKT; if (py >= 0) { ctx.strokeStyle = "rgba(255,255,255," + (0.65 + 0.35 * Math.sin(ZEICH.zeit * 8)) + ")"; ctx.lineWidth = 3; ZEICH.rr(ctx, x + q[0] * c + 1.5, y + py * c + 1.5, c - 3, c - 3, c * 0.18); ctx.stroke(); }
+    });
+  }
   if (g.eier > 0) { var eh = Math.min(bh, g.eier * c); ctx.fillStyle = "rgba(255,140,70,0.9)"; ctx.fillRect(x, y + bh - eh, Math.max(4, c * 0.25), eh); }
   if (g.tot) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x, y, bw, bh); ctx.fillStyle = "#fff"; ctx.font = "900 28px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillText("Aus!", x + bw / 2, y + bh / 2); }
   ctx.restore();
@@ -138,11 +161,15 @@ ZEICH.frameWurf = function (dt, s, g, k) {
   this.eigenesFeld(ctx, s);
   this.torZeichnen(ctx, s, L);
   if (g) this.fremdesFeld(ctx, g, L);
+  if (s.draussen && !s.tot) {                                                                                   // dein Stein ist beim Freund
+    ctx.fillStyle = "rgba(125,255,216,0.9)"; ctx.font = "800 " + Math.round(Math.min(18, c * 0.9)) + "px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("Dein Stein ist", L.bx + 5 * c, L.by + 8 * c); ctx.fillText("drüben → einbauen", L.bx + 5 * c, L.by + 9.2 * c);
+  }
   this.infoZeichnen(ctx, s, L);
   if (this.zeit - (k && k.start || 0) < 40) {                                                                  // kleiner Hinweis, die ersten 40 s
     ctx.fillStyle = "rgba(200,190,255,0.75)"; ctx.textAlign = L.quer ? "left" : "center";
-    if (L.quer) { ctx.font = "600 10px system-ui, sans-serif"; ["Tor offen: ▶ an die", "Wand schieben =", "Stein zum Freund"].forEach(function (z, j) { ctx.fillText(z, L.ix + 6, L.by + 70 + 24 + 4 * 34 + 100 + j * 12); }); }
-    else { ctx.font = "600 12px system-ui, sans-serif"; var mx = L.bx + (T_B * c * 2 + L.luecke) / 2; ctx.fillText("Tor offen: ▶ an die Wand schieben, wenn der Stein", mx, L.by + T_H * c + 30); ctx.fillText("auf Tor-Höhe ist, dann fliegt er zum Freund", mx, L.by + T_H * c + 46); }
+    if (L.quer) { ctx.font = "600 10px system-ui, sans-serif"; (this.einbau ? ["Tor offen: ▶ an die", "Wand schieben,", "beim Freund einbauen"] : ["Tor offen: ▶ an die", "Wand schieben =", "Stein zum Freund"]).forEach(function (z, j) { ctx.fillText(z, L.ix + 6, L.by + 70 + 24 + 4 * 34 + 100 + j * 12); }); }
+    else { ctx.font = "600 12px system-ui, sans-serif"; var mx = L.bx + (T_B * c * 2 + L.luecke) / 2; ctx.fillText("Tor offen: ▶ an die Wand schieben, wenn der Stein", mx, L.by + T_H * c + 30); ctx.fillText(this.einbau ? "auf Tor-Höhe ist, dann steuerst du ihn beim Freund" : "auf Tor-Höhe ist, dann fliegt er zum Freund", mx, L.by + T_H * c + 46); }
   }
   for (i = 0; i < FX.fluege.length; i++) {                                                                       // fliegende Steine
     var f = FX.fluege[i], p = f.t / f.dauer, e = p * p * (3 - 2 * p), fx = f.x0 + (f.x1 - f.x0) * e, fy = f.y0 + (f.y1 - f.y0) * e - Math.sin(p * Math.PI) * c * 3;
