@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Der Zehnte</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0b0b10;
+    color: #cfcfd8;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  #rahmen {
+    max-width: 1100px;
+    margin: 12px auto;
+    padding: 0 8px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: normal;
+    letter-spacing: 2px;
+    color: #9a8f6f;
+  }
+  #spiel {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 1100px;
+    background: #000;
+    border: 1px solid #2a2a33;
+  }
+  #anleitung {
+    font-size: 13px;
+    color: #77777f;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="rahmen">
+  <h1>DER ZEHNTE</h1>
+  <canvas id="spiel" width="960" height="640"></canvas>
+  <div id="anleitung">
+    WASD bewegen &middot; Maus zielen &middot; Linksklick Kombo (3 Schlaege) &middot;
+    Rechtsklick Wurfaxt / Zauber (Mausrad wechselt) &middot; Leertaste Ausweichschritt &middot; Q Heiltrank trinken &middot;
+    E ansprechen / lesen / Treppe &middot; P / Esc Pause-Menü (u. a. Spiel beenden) &middot; K Fertigkeiten &middot; I Ausrüstung &middot; M Musik an/aus &middot; F Bildrate anzeigen &middot; R zurueck ins Dorf &middot;
+    V 2D/3D-Ansicht (im Dungeon: First-Person)
+  </div>
+</div>
+
+<!-- Klassische Skripte, keine Module: laeuft per Doppelklick ohne Server.
+     Reihenfolge ist wichtig: karte -> spieler -> kampf -> gegner -> geschichte -> held ->
+     sprites -> figuren -> grafik -> hud -> gebaeude -> dorf -> dorfgrafik -> boss -> bossgrafik -> zauber -> fortschritt -> audio -> musik -> klang -> szenen ->
+     bildschirme -> spiel -->
+<script src="js/karte.js"></script>
+<script src="js/items.js"></script>
+<script src="js/klassen.js"></script>
+<script src="js/klassenbaum.js"></script>
+<script src="js/effekte.js"></script>
+<script src="js/faehigkeiten.js"></script>
+<script src="js/baer.js"></script>
+<script src="js/raeume.js"></script>
+<script src="js/pause.js"></script>
+<script src="js/leistung.js"></script>
+<script src="js/spieler.js"></script>
+<script src="js/kampf.js"></script>
+<script src="js/gegner.js"></script>
+<script src="js/gegner2.js"></script>
+<script src="js/wege.js"></script>
+<script src="js/geschichte.js"></script>
+<script src="js/held.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/gegnerbilder.js"></script>
+<script src="js/figuren.js"></script>
+<script src="js/grafik.js"></script>
+<script src="js/dreid.js"></script>
+<script src="js/itemgrafik.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/gebaeude.js"></script>
+<script src="js/dorf.js"></script>
+<script src="js/dorfgrafik.js"></script>
+<script src="js/boss.js"></script>
+<script src="js/bossgrafik.js"></script>
+<script src="js/zauber.js"></script>
+<script src="js/fortschritt.js"></script>
+<script src="js/kammer.js"></script>
+<script src="js/speicher.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/musik.js"></script>
+<script src="js/klang.js"></script>
+<script src="js/szenen.js"></script>
+<script src="js/bildschirme.js"></script>
+<script src="js/spiel.js"></script>
+<script src="../../zurueck.js"></script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>SNAKE — besser als Nokia</title>
+<style>
+  :root {
+    --lcd-bg:   #a8c256;
+    --lcd-bg2:  #8fae46;
+    --lcd-ink:  #1d2b12;
+    --lcd-ink2: #33421f;
+    --bezel:    #14161a;
+    --bezel2:   #23262c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(1200px 800px at 50% 20%, #2a2e36 0%, #14161a 60%, #0b0c0e 100%);
+    color: #cfd6c2;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  .phone {
+    background: linear-gradient(160deg, var(--bezel2), var(--bezel) 55%);
+    border-radius: 26px;
+    padding: 22px 22px 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.08);
+    border: 1px solid #000;
+  }
+  .brand {
+    text-align: center; letter-spacing: .45em; font-size: 11px;
+    color: #7d8471; margin-bottom: 10px; text-indent: .45em;
+  }
+  .screen {
+    position: relative;
+    border-radius: 10px;
+    padding: 10px;
+    background: #0c0f08;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.9);
+  }
+  .lcd {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    background: linear-gradient(170deg, var(--lcd-bg), var(--lcd-bg2));
+    box-shadow: 0 0 26px rgba(168,194,86,.25);
+  }
+  canvas { display: block; }
+  /* weiche CRT-Atmosphaere: Scanlines + Vignette */
+  .lcd::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      repeating-linear-gradient(0deg, rgba(20,30,10,.10) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 90% at 50% 45%, transparent 60%, rgba(15,25,8,.28) 100%);
+  }
+  .hud {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 10px 4px 2px; font-size: 12px; color: #99a287;
+    letter-spacing: .08em;
+  }
+  .hud b { color: #e7ecd9; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .keys {
+    text-align: center; font-size: 11px; color: #6f7663; margin-top: 8px;
+    letter-spacing: .05em;
+  }
+  kbd {
+    background: #2c3038; border: 1px solid #40454f; border-bottom-width: 2px;
+    border-radius: 4px; padding: 1px 6px; font-size: 10px; color: #cfd6c2;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="brand">SNAKE&nbsp;II</div>
+  <div class="screen">
+    <div class="lcd"><canvas id="cv"></canvas></div>
+  </div>
+  <div class="hud">
+    <span>PUNKTE <b id="score">0</b></span>
+    <span>REKORD <b id="hiscore">0</b></span>
+    <span>LEVEL <b id="level">1</b></span>
+  </div>
+  <div class="keys">
+    <kbd>&#8592;</kbd> <kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8594;</kbd> oder <kbd>W A S D</kbd> &nbsp;&middot;&nbsp;
+    <kbd>Space</kbd> Pause &nbsp;&middot;&nbsp; <kbd>M</kbd> Ton &nbsp;&middot;&nbsp; <kbd>Enter</kbd> Neu
+  </div>
+</div>
+
+<script>
+"use strict";
+(function () {
+  // ---------- Feld & Optik ----------
+  var COLS = 24, ROWS = 18, CELL = 22;
+  var W = COLS * CELL, H = ROWS * CELL;
+  var cv = document.getElementById("cv");
+  var ctx = cv.getContext("2d");
+  var dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = "100%"; cv.style.height = "auto";
+  cv.style.maxWidth = W + "px";
+  ctx.scale(dpr, dpr);
+
+  var INK = "#1d2b12", INK_SOFT = "rgba(29,43,18,.35)";
+
+  // ---------- Zustand ----------
+  var state = "ready";          // ready | running | paused | over | win
+  var snake, dir, queue, food, score, level, speedMs, acc, last, grow, blink;
+  var hiscore = 0;
+  try { hiscore = parseInt(localStorage.getItem("snake.hiscore") || "0", 10) || 0; } catch (e) {}
+  var muted = false;
+
+  function reset() {
+    var cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2);
+    snake = [{x: cx - 1, y: cy}, {x: cx - 2, y: cy}, {x: cx - 3, y: cy}];
+    dir = {x: 1, y: 0};
+    queue = [];
+    grow = 0;
+    score = 0; level = 1; speedMs = 150; acc = 0; last = 0; blink = 0;
+    placeFood();
+    syncHud();
+  }
+
+  function placeFood() {
+    var free = [];
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (!snake.some(function (s) { return s.x === x && s.y === y; }))
+          free.push({x: x, y: y});
+    if (!free.length) { food = null; return; }   // Feld voll -> Gewinn
+    food = free[(Math.random() * free.length) | 0];
+  }
+
+  function syncHud() {
+    document.getElementById("score").textContent = score;
+    document.getElementById("hiscore").textContent = hiscore;
+    document.getElementById("level").textContent = level;
+  }
+
+  // ---------- Eingabe ----------
+  var DIRS = {
+    ArrowLeft:  {x: -1, y: 0}, KeyA: {x: -1, y: 0},
+    ArrowRight: {x:  1, y: 0}, KeyD: {x:  1, y: 0},
+    ArrowUp:    {x: 0, y: -1}, KeyW: {x: 0, y: -1},
+    ArrowDown:  {x: 0, y:  1}, KeyS: {x: 0, y:  1}
+  };
+  function turn(d) {
+    // gegen die RICHTUNG des zuletzt Gewaehlten pruefen, nicht des aktuellen —
+    // sonst waere 180-Grad-Drehung bei Doppeltipp in einem Tick moeglich.
+    var lastDir = queue.length ? queue[queue.length - 1] : dir;
+    if (d.x === -lastDir.x && d.y === -lastDir.y) return;   // Rueckwaerts: verbieten
+    if (d.x ===  lastDir.x && d.y ===  lastDir.y) return;   // gleiche Richtung: null-op
+    if (queue.length < 2) queue.push(d);
+  }
+
+  document.addEventListener("keydown", function (e) {
+    var d = DIRS[e.code];
+    if (d) {
+      e.preventDefault();
+      if (state === "ready" || state === "over" || state === "win") { reset(); state = "running"; }
+      turn(d);
+      return;
+    }
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (state === "running") state = "paused";
+      else if (state === "paused") state = "running";
+      else if (state === "ready") { reset(); state = "running"; }
+      else if (state === "over" || state === "win") { reset(); state = "running"; }
+    } else if (e.code === "Enter" || e.code === "KeyR") {
+      reset(); state = "running";
+    } else if (e.code === "KeyM") {
+      muted = !muted;
+    }
+  });
+
+  // Touch: Wischen
+  var tx = 0, ty = 0;
+  cv.addEventListener("touchstart", function (e) {
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+  }, {passive: true});
+  cv.addEventListener("touchend", function (e) {
+    var dx = e.changedTouches[0].clientX - tx;
+    var dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+      if (state !== "running") { reset(); state = "running"; }
+      return;
+    }
+    var d = Math.abs(dx) > Math.abs(dy)
+      ? {x: dx > 0 ? 1 : -1, y: 0}
+      : {x: 0, y: dy > 0 ? 1 : -1};
+    if (state === "ready" || state === "over" || state === "win") { reset(); state = "running"; }
+    turn(d);
+  }, {passive: true});
+
+  cv.addEventListener("click", function () {
+    if (state !== "running") { reset(); state = "running"; }
+  });
+
+  // ---------- Ton ----------
+  var ac = null;
+  function beep(freq, ms, vol) {
+    if (muted) return;
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = "square"; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || 0.04, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + ms / 1000);
+      o.connect(g); g.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + ms / 1000);
+    } catch (e) {}
+  }
+
+  // ---------- Spiellogik ----------
+  function step() {
+    if (queue.length) dir = queue.shift();
+    var head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+    // Wand = Tod (wie frueher). Auskommentieren fuer Wrap-around:
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) { die(); return; }
+    // if (head.x < 0) head.x = COLS - 1; if (head.x >= COLS) head.x = 0;
+    // if (head.y < 0) head.y = ROWS - 1; if (head.y >= ROWS) head.y = 0;
+
+    // Schwanzfeld: wenn nicht gefressen, zieht der Schwanz weiter -> erlaubt.
+    var eats = food && head.x === food.x && head.y === food.y;
+    var body = eats ? snake : snake.slice(0, -1);
+    if (body.some(function (s) { return s.x === head.x && s.y === head.y; })) { die(); return; }
+
+    snake.unshift(head);
+    if (eats) {
+      score += 10 + level * 2;
+      level = 1 + Math.floor(score / 60);
+      speedMs = Math.max(65, 150 - (level - 1) * 9);
+      grow += 1;
+      beep(660 + level * 30, 60);
+      if (grow > 0) { grow--; } else { snake.pop(); }
+      placeFood();
+      if (!food) { state = "win"; saveScore(); syncHud(); return; }
+      syncHud();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function die() {
+    state = "over";
+    beep(160, 200, 0.06);
+    setTimeout(function () { beep(110, 300, 0.06); }, 180);
+    saveScore(); syncHud();
+  }
+
+  function saveScore() {
+    if (score > hiscore) {
+      hiscore = score;
+      try { localStorage.setItem("snake.hiscore", String(hiscore)); } catch (e) {}
+    }
+  }
+
+  // ---------- Zeichnen ----------
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Grundraster: dezente Punkte wie tote LCD-Segmente
+    ctx.fillStyle = INK_SOFT;
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        ctx.fillRect(x * CELL + CELL / 2 - 1, y * CELL + CELL / 2 - 1, 2, 2);
+
+    // Futter: blinkender Nokia-Koeder
+    if (food && state === "running") {
+      blink = (blink + 1) % 16;
+      if (blink < 11) drawFood(food.x, food.y);
+    } else if (food) {
+      drawFood(food.x, food.y);
+    }
+
+    // Schlange: verbundene abgerundete Segmente
+    ctx.fillStyle = INK;
+    for (var i = snake.length - 1; i >= 0; i--) {
+      var s = snake[i], px = s.x * CELL, py = s.y * CELL;
+      var r = i === 0 ? 7 : 5;
+      rr(px + 1.5, py + 1.5, CELL - 3, CELL - 3, r);
+      ctx.fill();
+    }
+    // Verbindungsstuecke zwischen Nachbarn (kein Perlenketten-Look)
+    for (var j = 0; j < snake.length - 1; j++) {
+      var a = snake[j], b = snake[j + 1];
+      if (a.x + b.x === 2 * a.x && a.y !== b.y) {
+        ctx.fillRect(a.x * CELL + 4, Math.min(a.y, b.y) * CELL + 3, CELL - 8, CELL - 6);
+      } else if (a.y + b.y === 2 * a.y && a.x !== b.x) {
+        ctx.fillRect(Math.min(a.x, b.x) * CELL + 3, a.y * CELL + 4, CELL - 6, CELL - 8);
+      }
+    }
+    drawEyes();
+
+    if (state === "ready")   overlay("SNAKE II", "Los geht's mit einer Pfeiltaste");
+    if (state === "paused")  overlay("PAUSE", "Space weiter");
+    if (state === "over")    overlay("GAME OVER", "Enter oder Klick: neu");
+    if (state === "win")     overlay("SIEG!", "Feld voll — Enter: neu");
+  }
+
+  function drawFood(x, y) {
+    var cx = x * CELL + CELL / 2, cy = y * CELL + CELL / 2;
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.arc(cx, cy, CELL * 0.30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(168,194,86,.9)";
+    ctx.fillRect(cx - 1.5, cy - CELL * 0.42, 3, 5);   // Stengel
+  }
+
+  function drawEyes() {
+    var h = snake[0], px = h.x * CELL, py = h.y * CELL;
+    ctx.fillStyle = "#a8c256";
+    var ex = dir.x, ey = dir.y;               // Blick in Fahrtrichtung
+    var ox = CELL / 2, oy = CELL / 2, off = 4.5, r = 2.4;
+    var e1x = px + ox + ey * off - (ey ? 0 : ex * 3);
+    var e1y = py + oy + ex * off - (ex ? 0 : ey * 3);
+    var e2x = px + ox - ey * off - (ey ? 0 : ex * 3);
+    var e2y = py + oy - ex * off - (ex ? 0 : ey * 3);
+    ctx.beginPath(); ctx.arc(e1x, e1y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e2x, e2y, r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function overlay(title, sub) {
+    ctx.fillStyle = "rgba(168,194,86,.82)";
+    ctx.fillRect(0, H / 2 - 46, W, 92);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.strokeRect(14, H / 2 - 38, W - 28, 76);
+    ctx.fillStyle = INK;
+    ctx.textAlign = "center";
+    ctx.font = "700 30px 'Segoe UI', system-ui, sans-serif";
+    ctx.fillText(title, W / 2, H / 2 - 4);
+    ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
+    ctx.fillText(sub, W / 2, H / 2 + 22);
+  }
+
+  // ---------- Loop ----------
+  function frame(t) {
+    if (!last) last = t;
+    var dt = Math.min(t - last, 250);   // Tab-Wechsel: kein Zeit-Sprung
+    last = t;
+    if (state === "running") {
+      acc += dt;
+      while (acc >= speedMs) { acc -= speedMs; step(); if (state !== "running") break; }
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  // Test-/Debug-Zugriff
+  window.SNAKE = {
+    get state() { return state; },
+    get snake() { return snake; },
+    set snake(v) { snake = v; },
+    get score() { return score; },
+    get food() { return food; },
+    set food(v) { food = v; },
+    get cols() { return COLS; }, get rows() { return ROWS; },
+    reset: function () { reset(); },
+    start: function () { reset(); state = "running"; },
+    step: function () { step(); },
+    turn: function (d) { turn(d); }
+  };
+
+  reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+<script src="../../zurueck.js"></script>
+</body>
+</html>

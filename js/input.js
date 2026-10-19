@@ -3,7 +3,7 @@
 
 var INPUT = {
   DAS: 0.16, ARR: 0.045, WEICH_ARR: 0.03,                // Wartezeit, bis die Wiederholung beginnt, und Takt danach (s)
-  aktiv: false, gehalten: { links: false, rechts: false, runter: false }, t: { links: 0, rechts: 0, runter: 0 }, pause: false,
+  aktiv: false, letzterStein: null, runterAus: false, gehalten: { links: false, rechts: false, runter: false }, t: { links: 0, rechts: 0, runter: 0 }, pause: false,
   aufAktion: null,                                       // Rueckruf fuer Ausloeser, die nicht das Feld betreffen (pause)
   s: null,
   setze: function (name, an) {
@@ -18,7 +18,7 @@ var INPUT = {
         else s.weich = true;
       }
       this.gehalten[name] = an;
-      if (name === "runter" && !an) s.weich = false;
+      if (name === "runter") { this.runterAus = false; if (!an) s.weich = false; }
       return;
     }
     if (!an) return;
@@ -37,9 +37,10 @@ var INPUT = {
       self.t[n] += dt;
       while (self.t[n] >= self.DAS + self.ARR) { self.t[n] -= self.ARR; tBewege(s, n === "links" ? -1 : 1); }
     });
-    s.weich = this.gehalten.runter;
+    if (this.letzterStein !== s.akt) { this.letzterStein = s.akt; if (this.gehalten.runter) this.runterAus = true; }   // gehaltenes ▼ gilt nicht fuer den naechsten Stein
+    s.weich = this.gehalten.runter && !this.runterAus;
   },
-  alleLoslassen: function () { this.gehalten.links = this.gehalten.rechts = this.gehalten.runter = false; if (this.s) this.s.weich = false; },
+  alleLoslassen: function () { this.gehalten.links = this.gehalten.rechts = this.gehalten.runter = false; if (this.s) this.s.weich = false; this.runterAus = false; },
   start: function (s) { this.s = s; this.aktiv = true; this.alleLoslassen(); },
   stopp: function () { this.aktiv = false; this.alleLoslassen(); },
 
@@ -80,7 +81,7 @@ var INPUT = {
       if (!g || e.pointerId !== g.id) return;
       var dt = performance.now() - g.t0, dy = e.clientY - g.y, dx = e.clientX - g.x0;
       if (INPUT.aktiv && !g.bewegt && dt < 300) INPUT.setze("dreh", true);
-      else if (INPUT.aktiv && dy > 80 && dt < 350 && Math.abs(dx) < dy) INPUT.setze("hart", true);
+      else if (INPUT.aktiv && dy > 140 && dt < 300 && Math.abs(dx) < dy) INPUT.setze("hart", true);
       g = null;
     };
     cv.addEventListener("pointerup", ende); cv.addEventListener("pointercancel", function () { g = null; });

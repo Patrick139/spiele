@@ -21,6 +21,7 @@ h2 { margin: 0; font-size: clamp(28px, 8vw, 42px); font-weight: 900; text-shadow
 .kacheln { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
 .kachel { width: 170px; padding: 16px 10px; border-radius: 22px; border: 2px solid rgba(255,255,255,.18); color: #fff; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;
   background: linear-gradient(160deg, rgba(120,80,255,.55), rgba(255,70,170,.35)); box-shadow: 0 8px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.35); transition: transform .12s; }
+a.kachel { text-decoration: none; background: rgba(255,255,255,.1); }
 .kachel:active { transform: scale(.96); }
 .kachel b { font-size: 22px; } .kachel small { color: #e0d6ff; font-size: 12px; line-height: 1.3; }
 .kachel.bald { opacity: .45; cursor: default; background: rgba(255,255,255,.06); } .kachel .gross { font-size: 56px; line-height: 72px; }

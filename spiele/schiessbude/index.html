@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Schießbude</title>
+<style>
+  html,body{margin:0;padding:0;background:#0b0e1a;height:100%;overflow:hidden}
+  #wrap{display:flex;align-items:center;justify-content:center;height:100%}
+  canvas{width:100%;height:auto;max-width:1280px;max-height:100vh;cursor:none;display:block;
+         box-shadow:0 0 60px rgba(0,0,0,.8)}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv" width="1280" height="720"></canvas></div>
+<script>
+"use strict";
+/* ======================================================================
+   ZIEL_BILD — das Zielmotiv. Beliebiges Seitenverhältnis; wird je nach
+   Flugrichtung horizontal gespiegelt. Trefferbox = Bildgröße + 15 %
+   Toleranz. Ersetzen durch eigene Data-URL oder Dateipfad möglich.
+   Webfassung: neutrale Scheibe; eigenes Bild per Knopf (nur im Browser).
+   ====================================================================== */
+const ZIEL_BILD = "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27500%27%20height%3D%27500%27%3E%3Ccircle%20cx%3D%27250%27%20cy%3D%27250%27%20r%3D%27245%27%20fill%3D%27%23fff%27%20stroke%3D%27%23222%27%20stroke-width%3D%276%27/%3E%3Ccircle%20cx%3D%27250%27%20cy%3D%27250%27%20r%3D%27190%27%20fill%3D%27%23d33%27/%3E%3Ccircle%20cx%3D%27250%27%20cy%3D%27250%27%20r%3D%27130%27%20fill%3D%27%23fff%27/%3E%3Ccircle%20cx%3D%27250%27%20cy%3D%27250%27%20r%3D%2770%27%20fill%3D%27%23d33%27/%3E%3Ccircle%20cx%3D%27250%27%20cy%3D%27250%27%20r%3D%2720%27%20fill%3D%27%23222%27/%3E%3C/svg%3E";
+
+/* ------------------------- Konstanten (Stellschrauben) ------------------ */
+const CFG = {
+  BREITE: 1280, HOEHE: 720,
+  HORIZONT: 470,
+  RUNDEN_ZEIT: 90,            // Sekunden
+  MUNITION: 8,
+  NACHLADE_ZEIT: 1.0,         // Sekunden
+  TOLERANZ: 1.15,             // Trefferbox = Bildgröße * TOLERANZ
+  EBENEN: {                   // Parallaxe: hinten klein/schnell, vorne groß/langsam
+    hinten:  { punkte: 10, scale: 0.34, speedMin: 250, speedMax: 330, yMin: 355, yMax: 425, spawnMin: 0.75, spawnMax: 1.35 },
+    mitte:   { punkte: 5,  scale: 0.60, speedMin: 140, speedMax: 200, yMin: 430, yMax: 505, spawnMin: 1.0,  spawnMax: 1.8  },
+    vorne:   { punkte: 2,  scale: 0.95, speedMin: 70,  speedMax: 120, yMin: 520, yMax: 615, spawnMin: 1.4,  spawnMax: 2.3  },
+  },
+  BODEN_ZIEL_PROB: 0.22,      // Anteil Ziele, die am Boden/Zaunpfahl sitzen
+  WACKEL_AMPL: 14,            // Flugbogen-Amplitude px
+  POPUP_LEBEN: 1.1,
+  REKORD_KEY: "schiessbude_rekord_v1",
+};
+
+/* ------------------------------- Zustand -------------------------------- */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let state = "start";          // start | play | pause | end
+let score = 0, ammo = CFG.MUNITION, zeit = CFG.RUNDEN_ZEIT;
+let reloading = 0;            // Restsekunden, 0 = nicht am Nachladen
+let targets = [], particles = [], popups = [];
+let spawnTimer = { hinten: 0.8, mitte: 1.4, vorne: 2.0 };
+let mouse = { x: 640, y: 360 };
+let muted = false, windRad = 0, cloudDrift = 0, newRecord = false;
+let rekord = 0; try { rekord = +localStorage.getItem(CFG.REKORD_KEY) || 0; } catch (e) {}
+let bonus = [];               // Schild +25, Vogelscheuche -20
+let lastTs = 0, shake = 0, flash = 0;
+let targetSeq = 0;
+
+/* ------------------------------- Bild ----------------------------------- */
+const zielImg = new Image();
+let zielAspect = 500 / 704;   // Breite/Höhe, bis geladen
+let imgOk = false;
+zielImg.onload = () => { zielAspect = zielImg.width / zielImg.height; imgOk = true; };
+zielImg.src = ZIEL_BILD;
+
+/* ------------------------------ Audio ----------------------------------- */
+let AC = null;
+function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); return AC; }
+function envGain(t0, peak, dur) { const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); g.connect(AC.destination); return g; }
+function noiseBuf(dur) { const n = AC.sampleRate * dur, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; return b; }
+function playNoise(dur, peak, fType, f0, f1) {
+  const t0 = AC.currentTime, s = AC.createBufferSource(); s.buffer = noiseBuf(dur);
+  const f = AC.createBiquadFilter(); f.type = fType; f.frequency.setValueAtTime(f0, t0);
+  if (f1) f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  s.connect(f); f.connect(envGain(t0, peak, dur)); s.start(t0); s.stop(t0 + dur);
+}
+function tone(dur, peak, f0, f1, type) {
+  const t0 = AC.currentTime, o = AC.createOscillator(); o.type = type || "sine";
+  o.frequency.setValueAtTime(f0, t0); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  o.connect(envGain(t0, peak, dur)); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const SFX = {
+  schuss()  { playNoise(0.12, 0.5, "lowpass", 2200, 300); tone(0.09, 0.35, 160, 50, "triangle"); },
+  fehl()    { playNoise(0.25, 0.16, "bandpass", 900, 2400); },
+  treffer() { playNoise(0.14, 0.4, "lowpass", 1400, 250); tone(0.28, 0.3, 900, 180, "sine"); tone(0.2, 0.15, 1400, 300, "square"); },
+  nachladen(){ tone(0.05, 0.25, 2200, 1600, "square"); setTimeout(() => { if (AC) tone(0.06, 0.3, 1500, 900, "square"); }, 350); setTimeout(() => { if (AC) playNoise(0.08, 0.3, "highpass", 1200); }, 700); },
+  schild()  { tone(0.15, 0.3, 660, 990, "sine"); setTimeout(() => { if (AC) tone(0.25, 0.3, 990, 1320, "sine"); }, 120); },
+  boese()   { tone(0.3, 0.3, 220, 90, "sawtooth"); },
+  leer()    { tone(0.05, 0.2, 1100, 700, "square"); },
+  tick()    { tone(0.06, 0.25, 880, 880, "square"); },
+  ende()    { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => { if (AC) tone(0.3, 0.25, f, f, "triangle"); }, i * 140)); },
+};
+function snd(name) { if (muted) return; try { ac(); SFX[name](); } catch (e) {} }
+
+/* ---------------------------- Hilfsfunktionen ---------------------------- */
+const rnd = (a, b) => a + Math.random() * (b - a);
+function zielGroesse(scale) { const h = 130 * scale; return { w: h * zielAspect, h }; }
+
+function spawnTarget(layer) {
+  const cfg = CFG.EBENEN[layer];
+  const dir = Math.random() < 0.5 ? 1 : -1;             // 1 = nach rechts
+  const g = zielGroesse(cfg.scale);
+  const boden = Math.random() < CFG.BODEN_ZIEL_PROB;
+  const t = {
+    id: ++targetSeq, layer, cfg, dir, boden,
+    w: g.w, h: g.h,
+    x: dir === 1 ? -g.w : CFG.BREITE + g.w,
+    y: rnd(cfg.yMin, cfg.yMax),
+    vx: dir * rnd(cfg.speedMin, cfg.speedMax),
+    phase: rnd(0, Math.PI * 2),
+    alive: true, dead: false, fade: 1,
+    hop: boden ? rnd(0.5, 1.2) : 0, hopT: 0,
+  };
+  if (boden) {
+    t.y = (layer === "vorne") ? rnd(560, 600) : rnd(455, 480);   // auf Zaun-/Bodenlinie
+    t.vx = 0; t.hopT = rnd(0, t.hop);
+  }
+  targets.push(t);
+}
+
+function initBonus() {
+  bonus = [
+    { art: "schild", x: 175, y: 415, r: 34, punkte: 25, getroffen: false },
+    { art: "vogelscheuche", x: 1040, y: 585, r: 46, punkte: -20, getroffen: false },
+  ];
+}
+
+function puff(x, y, farbe, n) {
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, Math.PI * 2), s = rnd(30, 160);
+    particles.push({ art: "puff", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30,
+      r: rnd(3, 9), leben: rnd(0.35, 0.7), t: 0, farbe });
+  }
+}
+function federn(x, y, n) {
+  const cols = ["#f5f0e6", "#d8cfc0", "#b8a88f", "#8c7a5e"];
+  for (let i = 0; i < n; i++) {
+    const a = rnd(-Math.PI, 0), s = rnd(40, 150);
+    particles.push({ art: "feder", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      rot: rnd(0, Math.PI * 2), vr: rnd(-6, 6), leben: rnd(0.8, 1.5), t: 0,
+      farbe: cols[i % cols.length], laenge: rnd(6, 13) });
+  }
+}
+function popup(x, y, text, farbe) { popups.push({ x, y, text, farbe, t: 0 }); }
+
+/* ------------------------------- Schuss ---------------------------------- */
+function shootAt(px, py) {
+  if (state !== "play") return null;
+  if (reloading > 0) return "reloading";
+  if (ammo <= 0) { snd("leer"); popup(px, py - 20, "Nachladen! (R / Rechtsklick)", "#ffd23f"); return "empty"; }
+  ammo--; snd("schuss"); flash = 0.06;
+  // Ziele: vorne (groß) zuerst prüfen, damit Überlappung eindeutig ist
+  const order = ["vorne", "mitte", "hinten"];
+  for (const layer of order) {
+    for (const t of targets) {
+      if (!t.alive || t.layer !== layer) continue;
+      const hw = t.w * CFG.TOLERANZ / 2, hh = t.h * CFG.TOLERANZ / 2;
+      if (px >= t.x - hw && px <= t.x + hw && py >= t.y - hh && py <= t.y + hh) {
+        t.alive = false; t.dead = true; t.fade = 1;
+        score += t.cfg.punkte;
+        snd("treffer"); shake = 0.12;
+        puff(t.x, t.y, "rgba(120,110,100,0.55)", 10);
+        federn(t.x, t.y, 12);
+        popup(t.x, t.y - t.h / 2 - 8, "+" + t.cfg.punkte, layer === "hinten" ? "#ffd23f" : layer === "mitte" ? "#ffb14e" : "#9be26a");
+        return "hit";
+      }
+    }
+  }
+  for (const b of bonus) {
+    if (b.getroffen) continue;
+    if (Math.hypot(px - b.x, py - b.y) <= b.r) {
+      b.getroffen = true; score += b.punkte;
+      if (b.punkte > 0) { snd("schild"); popup(b.x, b.y - b.r - 10, "+25", "#5ec8ff"); puff(b.x, b.y, "rgba(90,160,255,0.5)", 12); }
+      else { snd("boese"); popup(b.x, b.y - b.r - 10, "-20", "#ff5e5e"); puff(b.x, b.y, "rgba(160,120,60,0.6)", 14); }
+      return "bonus";
+    }
+  }
+  snd("fehl"); puff(px, py, "rgba(200,200,210,0.4)", 4);
+  return "miss";
+}
+function startReload() {
+  if (state !== "play" || reloading > 0 || ammo === CFG.MUNITION) return false;
+  reloading = CFG.NACHLADE_ZEIT; snd("nachladen"); return true;
+}
+
+/* ------------------------------ Rundenlogik ------------------------------ */
+function startRound() {
+  score = 0; ammo = CFG.MUNITION; zeit = CFG.RUNDEN_ZEIT; reloading = 0;
+  targets = []; particles = []; popups = []; newRecord = false;
+  spawnTimer = { hinten: 0.6, mitte: 1.2, vorne: 1.8 };
+  initBonus(); state = "play"; lastTs = 0;
+  try { ac(); } catch (e) {}
+}
+function endRound() {
+  state = "end";
+  if (score > rekord) { rekord = score; newRecord = true; try { localStorage.setItem(CFG.REKORD_KEY, String(rekord)); } catch (e) {} }
+  snd("ende");
+}
+
+function step(dt) {
+  windRad += dt * 0.9; cloudDrift += dt * 6;
+  if (shake > 0) shake -= dt; if (flash > 0) flash -= dt;
+  // Partikel & Popups laufen immer (auch beim Nachladen)
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.t += dt;
+    if (p.t >= p.leben) { particles.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.art === "feder") { p.vy += 160 * dt; p.vx *= (1 - 1.2 * dt); p.rot += p.vr * dt; }
+    else { p.vy -= 10 * dt; p.vx *= (1 - 2 * dt); p.r += 14 * dt; }
+  }
+  for (let i = popups.length - 1; i >= 0; i--) { const q = popups[i]; q.t += dt; q.y -= 34 * dt; if (q.t >= CFG.POPUP_LEBEN) popups.splice(i, 1); }
+  if (state !== "play") return;
+
+  zeit -= dt;
+  if (zeit <= 0) { zeit = 0; endRound(); return; }
+  if (zeit < 5 && Math.ceil(zeit) !== Math.ceil(zeit + dt)) snd("tick");
+
+  if (reloading > 0) { reloading -= dt; if (reloading <= 0) { reloading = 0; ammo = CFG.MUNITION; } }
+
+  for (const layer of Object.keys(spawnTimer)) {
+    spawnTimer[layer] -= dt;
+    if (spawnTimer[layer] <= 0) {
+      spawnTarget(layer);
+      const c = CFG.EBENEN[layer];
+      spawnTimer[layer] = rnd(c.spawnMin, c.spawnMax);
+    }
+  }
+  for (let i = targets.length - 1; i >= 0; i--) {
+    const t = targets[i];
+    if (t.dead) { t.fade -= dt * 3; if (t.fade <= 0) targets.splice(i, 1); continue; }
+    if (t.boden) {
+      t.hopT -= dt;
+      if (t.hopT <= 0) { t.hopT = t.hop; t.x += rnd(-8, 8); }
+    } else {
+      t.x += t.vx * dt;
+      t.y += Math.sin(windRad * 2 + t.phase) * CFG.WACKEL_AMPL * dt;
+    }
+    const g = t.w;
+    if ((t.dir === 1 && t.x > CFG.BREITE + g) || (t.dir === -1 && t.x < -g)) targets.splice(i, 1);
+  }
+}
+
+/* ------------------------- Landschaft zeichnen --------------------------- */
+function drawSky() {
+  const g = ctx.createLinearGradient(0, 0, 0, CFG.HORIZONT + 40);
+  g.addColorStop(0, "#1a2340"); g.addColorStop(0.45, "#4a4a72");
+  g.addColorStop(0.75, "#c97b5a"); g.addColorStop(1, "#f2b268");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, CFG.BREITE, CFG.HORIZONT + 40);
+  // Morgensonne
+  const sx = 940, sy = CFG.HORIZONT - 26;
+  const sg = ctx.createRadialGradient(sx, sy, 4, sx, sy, 130);
+  sg.addColorStop(0, "rgba(255,236,180,0.95)"); sg.addColorStop(0.25, "rgba(255,190,120,0.5)"); sg.addColorStop(1, "rgba(255,190,120,0)");
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, 130, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ffe9b8"; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, 7); ctx.fill();
+  // Sterne verblasst
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  for (let i = 0; i < 24; i++) { const x = (i * 173 + 40) % CFG.BREITE, y = (i * 61) % 180; ctx.fillRect(x, y, 2, 2); }
+}
+function hill(yBase, amp, farbe, seed) {
+  ctx.fillStyle = farbe; ctx.beginPath(); ctx.moveTo(0, CFG.HOEHE);
+  for (let x = 0; x <= CFG.BREITE; x += 16) {
+    const y = yBase - amp * (0.6 * Math.sin(x * 0.004 + seed) + 0.4 * Math.sin(x * 0.011 + seed * 2));
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(CFG.BREITE, CFG.HOEHE); ctx.closePath(); ctx.fill();
+}
+function pine(x, y, s, farbe) {
+  ctx.fillStyle = farbe;
+  ctx.fillRect(x - 2 * s, y - 6 * s, 4 * s, 8 * s);
+  for (let i = 0; i < 3; i++) {
+    const w = (10 - i * 2.4) * s, ty = y - (6 + i * 9) * s;
+    ctx.beginPath(); ctx.moveTo(x - w, ty + 10 * s); ctx.lineTo(x, ty - 6 * s); ctx.lineTo(x + w, ty + 10 * s); ctx.closePath(); ctx.fill();
+  }
+}
+function roundTree(x, y, s, farbe) {
+  ctx.fillStyle = "#3a2c22"; ctx.fillRect(x - 3 * s, y - 16 * s, 6 * s, 16 * s);
+  ctx.fillStyle = farbe;
+  for (const [dx, dy, r] of [[-9, -22, 12], [8, -24, 13], [0, -32, 12], [0, -18, 14]]) {
+    ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, r * s, 0, 7); ctx.fill();
+  }
+}
+function windmill(x, y, s) {
+  ctx.fillStyle = "#d8d2c4";
+  ctx.beginPath(); ctx.moveTo(x - 7 * s, y); ctx.lineTo(x - 3 * s, y - 70 * s); ctx.lineTo(x + 3 * s, y - 70 * s); ctx.lineTo(x + 7 * s, y); ctx.closePath(); ctx.fill();
+  const cx = x, cy = y - 72 * s;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(windRad);
+  ctx.fillStyle = "#e8e2d4";
+  for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI * 2 / 3); ctx.fillRect(-2.5 * s, 0, 5 * s, 42 * s); }
+  ctx.restore();
+  ctx.fillStyle = "#8a8478"; ctx.beginPath(); ctx.arc(cx, cy, 4 * s, 0, 7); ctx.fill();
+}
+function nebelschicht(y, hoehe, alpha, drift) {
+  ctx.fillStyle = "rgba(220,225,235," + alpha + ")";
+  for (let i = 0; i < 5; i++) {
+    const x = ((i * 340 + drift * (0.5 + i * 0.2)) % (CFG.BREITE + 500)) - 250;
+    const w = 300 + i * 60, h = hoehe * (0.7 + 0.15 * i);
+    ctx.beginPath(); ctx.ellipse(x, y + (i % 2) * 10, w, h, 0, 0, 7); ctx.fill();
+  }
+}
+function zaun() {
+  ctx.strokeStyle = "#5a4632"; ctx.fillStyle = "#6b543c";
+  const posts = [];
+  for (let x = 60; x < CFG.BREITE; x += 170) posts.push(x);
+  for (const x of posts) ctx.fillRect(x - 4, 560, 8, 78);
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(0, 585); ctx.lineTo(CFG.BREITE, 585); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 612); ctx.lineTo(CFG.BREITE, 612); ctx.stroke();
+  return posts;
+}
+function drawBonus() {
+  for (const b of bonus) {
+    if (b.art === "schild") {
+      ctx.save(); ctx.translate(b.x, b.y);
+      ctx.fillStyle = b.getroffen ? "#3a4a5a" : "#7fb2e0";
+      ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(26, -18); ctx.lineTo(26, 8);
+      ctx.quadraticCurveTo(26, 26, 0, 34); ctx.quadraticCurveTo(-26, 26, -26, 8); ctx.lineTo(-26, -18); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#f5f0e6"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(b.getroffen ? "✓" : "+", 0, 8);
+      ctx.restore();
+    } else {
+      const x = b.x, y = b.y;
+      ctx.strokeStyle = "#7a5c38"; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(x, y + 40); ctx.lineTo(x, y - 40); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 34, y - 18); ctx.lineTo(x + 34, y - 18); ctx.stroke();
+      ctx.fillStyle = b.getroffen ? "#6a5a44" : "#c9a15c";
+      ctx.beginPath(); ctx.arc(x, y - 48, 16, 0, 7); ctx.fill();
+      ctx.fillStyle = "#8a6a3a"; ctx.fillRect(x - 22, y - 62, 44, 8);   // Hut
+      ctx.fillStyle = "#3a2c1c"; ctx.fillRect(x - 7, y - 52, 4, 4); ctx.fillRect(x + 3, y - 52, 4, 4);
+      ctx.fillStyle = "#e8dcc0"; ctx.fillRect(x - 14, y - 30, 28, 22);  // Sack-Körper
+      ctx.fillStyle = "#c9a15c"; ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("-20", x, y - 12);
+    }
+  }
+}
+function drawLandschaft() {
+  drawSky();
+  hill(430, 46, "#5d5878", 1.3);
+  windmill(300, 428, 1.0);
+  nebelschicht(432, 14, 0.16, cloudDrift);
+  hill(462, 34, "#4a5a52", 3.1);
+  for (const [x, s] of [[120, 0.8], [210, 0.6], [700, 0.7], [1180, 0.65]]) pine(x, 462, s, "#2e3d33");
+  nebelschicht(470, 16, 0.2, cloudDrift);
+  hill(500, 26, "#3d5240", 5.7);
+  for (const [x, s] of [[420, 0.9], [860, 1.0], [1080, 0.8]]) roundTree(x, 505, s, "#33513c");
+  // Boden
+  const gg = ctx.createLinearGradient(0, 500, 0, CFG.HOEHE);
+  gg.addColorStop(0, "#4a6a3e"); gg.addColorStop(1, "#2c4026");
+  ctx.fillStyle = gg; ctx.fillRect(0, 500, CFG.BREITE, CFG.HOEHE - 500);
+  drawBonus();
+  zaun();
+  for (const [x, s] of [[80, 1.3], [1210, 1.2]]) roundTree(x, 660, s, "#26402c");
+  nebelschicht(540, 12, 0.10, cloudDrift);
+}
+
+/* ------------------------------ Zeichnen --------------------------------- */
+function drawTarget(t) {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, t.fade);
+  ctx.translate(t.x, t.y);
+  if (t.dir === -1) ctx.scale(-1, 1);
+  if (t.dead) { ctx.rotate((1 - t.fade) * 1.4); }
+  const w = t.w, h = t.h;
+  if (imgOk) {
+    ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+    ctx.fillStyle = "#f2ede2";
+    ctx.beginPath(); ctx.roundRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, 6); ctx.fill();
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, 4); ctx.clip();
+    ctx.drawImage(zielImg, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    // Flügelschlag nur als dezenter Schlagstrich an den Seiten
+    const flap = Math.sin(windRad * 6 + t.phase);
+    ctx.strokeStyle = "rgba(40,40,50,0.5)"; ctx.lineWidth = Math.max(2, w * 0.08);
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 - 3, -h * 0.15); ctx.lineTo(-w / 2 - 3 - w * 0.28, -h * 0.15 - flap * h * 0.18);
+    ctx.moveTo(w / 2 + 3, -h * 0.15); ctx.lineTo(w / 2 + 3 + w * 0.28, -h * 0.15 - flap * h * 0.18);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = "#333"; ctx.fillRect(-w / 2, -h / 2, w, h);
+  }
+  ctx.restore();
+}
+function drawParticles() {
+  for (const p of particles) {
+    const a = 1 - p.t / p.leben;
+    if (p.art === "puff") { ctx.fillStyle = p.farbe.replace(/[\d.]+\)$/, (a * 0.8).toFixed(2) + ")"); ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+    else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = a;
+      ctx.fillStyle = p.farbe; ctx.beginPath(); ctx.ellipse(0, 0, p.laenge, p.laenge * 0.32, 0, 0, 7); ctx.fill(); ctx.restore(); }
+  }
+  ctx.globalAlpha = 1;
+  for (const q of popups) {
+    const a = 1 - q.t / CFG.POPUP_LEBEN;
+    ctx.globalAlpha = a; ctx.fillStyle = q.farbe;
+    ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+    ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 4;
+    ctx.strokeText(q.text, q.x, q.y); ctx.fillText(q.text, q.x, q.y);
+  }
+  ctx.globalAlpha = 1;
+}
+function drawHUD() {
+  ctx.fillStyle = "rgba(10,12,24,0.55)"; ctx.fillRect(0, 0, CFG.BREITE, 46);
+  ctx.font = "bold 22px sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
+  ctx.fillText("Punkte: " + score, 18, 30);
+  ctx.textAlign = "center";
+  ctx.fillStyle = zeit < 10 ? "#ff6b6b" : "#fff";
+  ctx.fillText(Math.ceil(zeit) + " s", CFG.BREITE / 2, 30);
+  ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+  ctx.fillText("Rekord: " + rekord, CFG.BREITE - 18, 30);
+  // Munition
+  for (let i = 0; i < CFG.MUNITION; i++) {
+    const x = 24 + i * 26, y = CFG.HOEHE - 26;
+    ctx.fillStyle = i < ammo ? "#ffd23f" : "rgba(255,255,255,0.18)";
+    ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
+  }
+  if (reloading > 0) {
+    ctx.textAlign = "center"; ctx.fillStyle = "#ffd23f"; ctx.font = "bold 24px sans-serif";
+    ctx.fillText("Nachladen …", CFG.BREITE / 2, CFG.HOEHE - 60);
+    ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.fillRect(CFG.BREITE / 2 - 100, CFG.HOEHE - 50, 200, 10);
+    ctx.fillStyle = "#ffd23f";
+    ctx.fillRect(CFG.BREITE / 2 - 100, CFG.HOEHE - 50, 200 * (1 - reloading / CFG.NACHLADE_ZEIT), 10);
+  } else if (ammo === 0) {
+    ctx.textAlign = "center"; ctx.fillStyle = "#ff6b6b"; ctx.font = "bold 22px sans-serif";
+    ctx.fillText("LEER — R oder Rechtsklick zum Nachladen", CFG.BREITE / 2, CFG.HOEHE - 60);
+  }
+  if (muted) { ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "16px sans-serif"; ctx.fillText("🔇 stumm (M)", 18, CFG.HOEHE - 52); }
+}
+function drawCrosshair() {
+  const { x, y } = mouse;
+  ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(x, y, 20, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "#ff3b3b"; ctx.lineWidth = 3.5;
+  ctx.beginPath(); ctx.arc(x, y, 20, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, 20.5, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 5.5;
+  for (const [dx1, dy1, dx2, dy2] of [[-32, 0, -10, 0], [10, 0, 32, 0], [0, -32, 0, -10], [0, 10, 0, 32]]) {
+    ctx.beginPath(); ctx.moveTo(x + dx1, y + dy1); ctx.lineTo(x + dx2, y + dy2); ctx.stroke();
+  }
+  ctx.strokeStyle = "#ff3b3b"; ctx.lineWidth = 3;
+  for (const [dx1, dy1, dx2, dy2] of [[-32, 0, -10, 0], [10, 0, 32, 0], [0, -32, 0, -10], [0, 10, 0, 32]]) {
+    ctx.beginPath(); ctx.moveTo(x + dx1, y + dy1); ctx.lineTo(x + dx2, y + dy2); ctx.stroke();
+  }
+  ctx.fillStyle = "#ff3b3b"; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill();
+}
+function overlayBox(w, h) {
+  ctx.fillStyle = "rgba(8,10,20,0.78)";
+  const x = (CFG.BREITE - w) / 2, y = (CFG.HOEHE - h) / 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 18); ctx.fill();
+  ctx.strokeStyle = "rgba(255,210,63,0.5)"; ctx.lineWidth = 2; ctx.stroke();
+  return { x, y };
+}
+function drawStart() {
+  overlayBox(760, 420);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffd23f"; ctx.font = "bold 58px sans-serif";
+  ctx.fillText("SCHIESSBUDE", CFG.BREITE / 2, 200);
+  ctx.fillStyle = "#cfd6e6"; ctx.font = "20px sans-serif";
+  ctx.fillText("Schießbude im Moor — Morgendämmerung", CFG.BREITE / 2, 240);
+  ctx.font = "18px sans-serif"; ctx.fillStyle = "#aab4c8";
+  const z = CFG.EBENEN;
+  const zeilen = [
+    "Linksklick = Schuss · 8 Schuss · R oder Rechtsklick = Nachladen",
+    "Hinten klein & schnell: 10 P. · Mitte: 5 P. · Vorne groß & langsam: 2 P.",
+    "Schild in der Landschaft: +25 · Vogelscheuche: −20",
+    "Runde: " + CFG.RUNDEN_ZEIT + " s · P = Pause · M = Ton",
+  ];
+  zeilen.forEach((s, i) => ctx.fillText(s, CFG.BREITE / 2, 290 + i * 30));
+  ctx.fillStyle = "#ffd23f"; ctx.font = "bold 26px sans-serif";
+  ctx.fillText("Klick oder Enter zum Starten", CFG.BREITE / 2, 500);
+  ctx.fillStyle = "#8a94a8"; ctx.font = "16px sans-serif";
+  ctx.fillText("Rekord: " + rekord, CFG.BREITE / 2, 540);
+}
+function drawEnd() {
+  overlayBox(640, 360);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffd23f"; ctx.font = "bold 48px sans-serif";
+  ctx.fillText("Runde vorbei!", CFG.BREITE / 2, 230);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 34px sans-serif";
+  ctx.fillText("Punkte: " + score, CFG.BREITE / 2, 300);
+  ctx.fillStyle = newRecord ? "#9be26a" : "#aab4c8"; ctx.font = "22px sans-serif";
+  ctx.fillText(newRecord ? "★ Neuer Rekord! ★" : "Rekord: " + rekord, CFG.BREITE / 2, 345);
+  ctx.fillStyle = "#ffd23f"; ctx.font = "bold 24px sans-serif";
+  ctx.fillText("Klick oder Enter für neue Runde", CFG.BREITE / 2, 430);
+}
+function drawPause() {
+  overlayBox(420, 160);
+  ctx.textAlign = "center"; ctx.fillStyle = "#ffd23f"; ctx.font = "bold 40px sans-serif";
+  ctx.fillText("PAUSE", CFG.BREITE / 2, 340);
+  ctx.fillStyle = "#aab4c8"; ctx.font = "18px sans-serif";
+  ctx.fillText("P zum Weitermachen", CFG.BREITE / 2, 390);
+}
+
+function render() {
+  ctx.save();
+  if (shake > 0) ctx.translate(rnd(-4, 4) * shake * 8, rnd(-4, 4) * shake * 8);
+  drawLandschaft();
+  // Reihenfolge: hinten vor mitte vor vorne (Parallaxe-Überlappung)
+  for (const layer of ["hinten", "mitte", "vorne"])
+    for (const t of targets) if (t.layer === layer) drawTarget(t);
+  drawParticles();
+  ctx.restore();
+  if (flash > 0) { ctx.fillStyle = "rgba(255,240,200," + (flash * 4) + ")"; ctx.fillRect(0, 0, CFG.BREITE, CFG.HOEHE); }
+  if (state === "play" || state === "pause") { drawHUD(); drawCrosshair(); }
+  if (state === "start") drawStart();
+  if (state === "end") drawEnd();
+  if (state === "pause") drawPause();
+}
+
+/* ------------------------------ Loop ------------------------------------- */
+function loop(ts) {
+  const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
+  lastTs = ts;
+  if (state !== "pause") step(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* --------------------------- Eingabe ------------------------------------- */
+function canvasPos(ev) {
+  const r = cv.getBoundingClientRect();
+  return { x: (ev.clientX - r.left) * (CFG.BREITE / r.width), y: (ev.clientY - r.top) * (CFG.HOEHE / r.height) };
+}
+cv.addEventListener("mousemove", ev => { mouse = canvasPos(ev); });
+cv.addEventListener("mousedown", ev => {
+  ac();
+  if (ev.button === 0) {
+    if (state === "start" || state === "end") { startRound(); return; }
+    if (state === "pause") return;
+    const p = canvasPos(ev); mouse = p; shootAt(p.x, p.y);
+  } else if (ev.button === 2) {
+    startReload();
+  }
+});
+cv.addEventListener("contextmenu", ev => ev.preventDefault());
+window.addEventListener("keydown", ev => {
+  if (ev.key === "r" || ev.key === "R") startReload();
+  else if (ev.key === "p" || ev.key === "P") {
+    if (state === "play") state = "pause";
+    else if (state === "pause") { state = "play"; lastTs = 0; }
+  }
+  else if (ev.key === "m" || ev.key === "M") muted = !muted;
+  else if (ev.key === "Enter") { if (state === "start" || state === "end") startRound(); }
+});
+
+/* ------------------------- Debug-API für Tests --------------------------- */
+window.GAME = {
+  get state() { return state; }, set state(v) { state = v; },
+  get score() { return score; }, set score(v) { score = v; },
+  get ammo() { return ammo; }, set ammo(v) { ammo = v; },
+  get zeit() { return zeit; }, set zeit(v) { zeit = v; },
+  get reloading() { return reloading; }, set reloading(v) { reloading = v; },
+  get muted() { return muted; }, set muted(v) { muted = v; },
+  get targets() { return targets; }, set targets(v) { targets = v; },
+  get bonus() { return bonus; },
+  get rekord() { return rekord; },
+  spawn(layer) { spawnTarget(layer); return targets[targets.length - 1]; },
+  shoot(x, y) { return shootAt(x, y); },
+  reload() { return startReload(); },
+  step(dt) { step(dt); },
+  start() { startRound(); },
+  end() { endRound(); },
+};
+</script>
+<script>
+(function () {
+  var KEY = "schiessbude_bild";
+  try { var g = localStorage.getItem(KEY); if (g) zielImg.src = g; } catch (e) {}
+  var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.style.display = "none"; inp.id = "bildWahl";
+  var b = document.createElement("button"); b.textContent = "Eigenes Bild";
+  b.style.cssText = "position:fixed;right:6px;bottom:6px;z-index:99999;padding:4px 9px;border-radius:14px;background:rgba(0,0,0,.55);color:#fff;font:600 13px system-ui,sans-serif;opacity:.7;border:1px solid rgba(255,255,255,.25)";
+  b.onclick = function () { inp.click(); };
+  inp.onchange = function () {                       // verkleinern (max. 500 px), nur lokal speichern
+    var f = inp.files && inp.files[0]; if (!f) return;
+    var im = new Image(), url = URL.createObjectURL(f);
+    im.onload = function () {
+      var k = Math.min(1, 500 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      var d = c.toDataURL("image/jpeg", 0.85); URL.revokeObjectURL(url); zielImg.src = d;
+      try { localStorage.setItem(KEY, d); } catch (e) {}
+    };
+    im.src = url;
+  };
+  document.body.appendChild(b); document.body.appendChild(inp);
+})();
+</script>
+<script src="../../zurueck.js"></script>
+</body>
+</html>
