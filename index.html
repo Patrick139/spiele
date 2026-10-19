@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Spielesammlung</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120a2e">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="cv"></canvas>
+<div id="fps" class="weg"></div>
+
+<div id="kopf" class="weg">
+  <button id="tonKnopf" class="klein" aria-label="Ton">♪</button>
+  <button id="endeKnopf" class="klein" aria-label="Verlassen">✕</button>
+</div>
+
+<div id="steuer" class="weg">
+  <div class="gruppe links">
+    <button data-t="links" class="tast gross">◀</button>
+    <button data-t="runter" class="tast gross">▼</button>
+    <button data-t="rechts" class="tast gross">▶</button>
+  </div>
+  <div class="gruppe mitte">
+    <button data-t="halten" class="tast klein2">HALTEN</button>
+    <button data-t="hart" class="tast klein2 rot">FALLEN</button>
+  </div>
+  <div class="gruppe rechts">
+    <button data-t="drehL" class="tast gross">⟲</button>
+    <button data-t="dreh" class="tast gross gelb">⟳</button>
+  </div>
+</div>
+
+<!-- Startbild: Spielesammlung -->
+<section id="menu" class="schirm">
+  <h1><span>S</span><span>P</span><span>I</span><span>E</span><span>L</span><span>E</span></h1>
+  <p class="unter">Zwei Handys, ein WLAN, viel Gelächter.</p>
+  <div class="kacheln">
+    <button class="kachel" id="kTetris">
+      <svg viewBox="0 0 64 64" width="72" height="72" aria-hidden="true">
+        <g stroke="rgba(0,0,0,.35)" stroke-width="1.5">
+          <rect x="8" y="8" width="16" height="16" rx="3" fill="#12cfee"/><rect x="24" y="8" width="16" height="16" rx="3" fill="#12cfee"/><rect x="40" y="8" width="16" height="16" rx="3" fill="#12cfee"/>
+          <rect x="8" y="24" width="16" height="16" rx="3" fill="#b03cf0"/><rect x="24" y="24" width="16" height="16" rx="3" fill="#ffc61a"/><rect x="40" y="24" width="16" height="16" rx="3" fill="#ffc61a"/>
+          <rect x="8" y="40" width="16" height="16" rx="3" fill="#f03442"/><rect x="24" y="40" width="16" height="16" rx="3" fill="#34dc50"/><rect x="40" y="40" width="16" height="16" rx="3" fill="#ff8418"/>
+        </g>
+      </svg>
+      <b>Tetris</b><small>allein oder gegeneinander — mit Eiern</small>
+    </button>
+    <div class="kachel bald"><span class="gross">🎯</span><b>Panzer</b><small>bald</small></div>
+  </div>
+  <p class="spende">Kostenlos, ohne Werbung.</p>
+</section>
+
+<!-- Tetris: Auswahl -->
+<section id="tmenu" class="schirm weg">
+  <h2>Tetris</h2>
+  <label class="feld">Dein Name<input id="name" maxlength="12" autocomplete="off" value="Du"></label>
+  <button class="gross-knopf" id="bAllein">Allein üben</button>
+  <div class="chips" id="modi">
+    <button class="chip an" id="mEier">Eier-Duell</button><button class="chip" id="mWurf">Rübergeben</button>
+  </div>
+  <p class="hinweis" id="modiText">Zeilen räumen legt dem Freund Eier ins Feld.</p>
+  <button class="gross-knopf lila" id="bHost">Gegen einen Freund: Spiel eröffnen</button>
+  <button class="gross-knopf blau" id="bGast">Gegen einen Freund: Beitreten</button>
+  <p class="hinweis">Beide Handys im selben WLAN oder am selben Hotspot. Internet ist nicht nötig.</p>
+  <button class="link" id="bZurueck1">‹ zurück</button>
+</section>
+
+<!-- Code zeigen (Gastgeber: Code A, Gast: Code B) -->
+<section id="zeigen" class="schirm weg">
+  <h2 id="zeigTitel"></h2>
+  <p class="hinweis" id="zeigHinweis"></p>
+  <div class="qrbox"><canvas id="qr" width="10" height="10"></canvas><div id="qrWarte" class="warte">…</div></div>
+  <textarea id="zeigText" readonly rows="3"></textarea>
+  <div class="zeile"><button class="knopf" id="bKopieren">Code kopieren</button><button class="knopf" id="bTeilen">Teilen</button></div>
+  <button class="gross-knopf lila weg" id="bWeiter">Weiter: Code vom Freund einlesen</button>
+  <p class="status" id="zeigStatus"></p>
+  <button class="link" id="bZurueck2">‹ abbrechen</button>
+</section>
+
+<!-- Code einlesen -->
+<section id="einlesen" class="schirm weg">
+  <h2 id="einTitel"></h2>
+  <p class="hinweis" id="einHinweis"></p>
+  <div class="videobox weg" id="videoBox"><video id="video" muted playsinline></video><div class="zielrahmen"></div></div>
+  <button class="knopf weg" id="bKamera">Kamera starten</button>
+  <textarea id="einText" rows="3" placeholder="oder Code hier einfügen"></textarea>
+  <button class="gross-knopf blau" id="bUebernehmen">Übernehmen</button>
+  <p class="status" id="einStatus"></p>
+  <button class="link" id="bZurueck3">‹ zurück</button>
+</section>
+
+<!-- Ende einer Runde -->
+<section id="ende" class="schirm weg">
+  <h2 id="endeTitel"></h2>
+  <div id="endeZahlen"></div>
+  <p class="status" id="endeStatus"></p>
+  <button class="gross-knopf lila" id="bNochmal">Nochmal</button>
+  <button class="link" id="bMenue">Zum Menü</button>
+</section>
+
+<script src="js/qrcode.js"></script>
+<script src="js/tetris.js"></script>
+<script src="js/render.js"></script>
+<script src="js/render_wurf.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/input.js"></script>
+<script src="js/verbindung.js"></script>
+<script src="js/spiel.js"></script>
+</body>
+</html>
