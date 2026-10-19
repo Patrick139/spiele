@@ -34,7 +34,7 @@ a.kachel { text-decoration: none; background: rgba(255,255,255,.1); }
 .gross-knopf:active, .knopf:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.3); }
 .knopf { padding: 10px 16px; font-size: 14px; background: linear-gradient(180deg, #6a58b8, #473a8c); }
 .zeile { display: flex; gap: 10px; }
-.chips { display: flex; gap: 8px; } .chip { font: inherit; font-weight: 800; font-size: 14px; color: #cbbcff; padding: 9px 16px; border-radius: 999px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3); cursor: pointer; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; } .chip { font: inherit; font-weight: 800; font-size: 14px; color: #cbbcff; padding: 9px 16px; border-radius: 999px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3); cursor: pointer; }
 .chip.an { color: #fff; border-color: #ffb36b; background: linear-gradient(180deg, rgba(255,150,60,.55), rgba(240,84,42,.55)); }
 .link { background: none; border: 0; color: #b9a8ff; font: inherit; font-size: 15px; padding: 10px; cursor: pointer; }
 .feld { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #cbbcff; align-items: center; }

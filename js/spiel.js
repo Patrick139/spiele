@@ -28,11 +28,11 @@ function schlafen(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }
 
 // ---- Runde ------------------------------------------------------------------------------------
 function neueRunde(seed, modus, variante) {
-  S.variante = modus === "duell" && variante === "wurf" ? "wurf" : "eier";
-  S.modus = modus; S.s = tNeu(seed); S.ende = null; S.nochmalIch = S.nochmalEr = false; S.totZeit = 0; S.sendT = 0;
-  S.g = modus === "duell" ? { abbild: new Array(T_B * T_H + 1).join("0"), eier: 0, tot: false, name: S.gegnerName } : null;
-  if (S.variante === "wurf") tTorStart(S.s);
-  ZEICH.setWurf(S.variante === "wurf"); S.hintStart = ZEICH.zeit;
+  S.variante = modus === "duell" && (variante === "wurf" || variante === "einbau") ? variante : "eier";   // eier | wurf (Ruebergeben) | einbau (beim Freund einbauen)
+  S.modus = modus; S.s = tNeu(seed); S.ende = null; S.nochmalIch = S.nochmalEr = false; S.totZeit = 0; S.sendT = 0; S.draussenT = 0;
+  S.g = modus === "duell" ? { abbild: new Array(T_B * T_H + 1).join("0"), eier: 0, tot: false, name: S.gegnerName, oben: false, fremd: null } : null;
+  if (S.variante !== "eier") tTorStart(S.s);
+  ZEICH.setWurf(S.variante !== "eier"); ZEICH.einbau = S.variante === "einbau"; S.hintStart = ZEICH.zeit;
   FX.reset(); INPUT.stopp(); INPUT.start(S.s); INPUT.aktiv = false;
   S.zahl = modus === "duell" ? ZAEHLER_DUELL : ZAEHLER_ALLEIN; S.zahlLetzte = 99; S.phase = "zahl";
   S.gestartet = true;
@@ -42,7 +42,10 @@ function neueRunde(seed, modus, variante) {
 
 function ereignisseAbarbeiten() {
   var s = S.s, i;
-  for (i = 0; i < s.ev.length; i++) { FX.ereignis(s.ev[i], s); SOUND.ereignis(s.ev[i]); }
+  for (i = 0; i < s.ev.length; i++) {
+    FX.ereignis(s.ev[i], s); SOUND.ereignis(s.ev[i]);
+    if (s.ev[i].art === "fremdFertig" && S.modus === "duell") VERB.senden({ t: "fe", v: s.ev[i].verpufft ? 1 : 0 });   // Stein des Freundes ist eingebaut oder verpufft
+  }
   s.ev.length = 0;
   while (s.ausgehend.length) {                                          // Eier an den Freund
     var n = s.ausgehend.shift();
@@ -50,7 +53,7 @@ function ereignisseAbarbeiten() {
   }
   while (s.ausgehendSteine.length) {                                    // Steine fuer den Freund (Ruebergeben)
     var w = s.ausgehendSteine.shift();
-    if (S.modus === "duell") VERB.senden({ t: "w", ty: w.typ, r: w.rot });
+    if (S.modus === "duell") VERB.senden({ t: "w", ty: w.typ, r: w.rot, y: w.y, ein: S.variante === "einbau" ? 1 : 0 });
   }
 }
 
@@ -71,8 +74,8 @@ function endeZeigen() {
   t.textContent = { gewonnen: "GEWONNEN!", verloren: S.modus === "allein" ? "Geschafft!" : "Verloren", remis: "Unentschieden", abbruch: "Verbindung weg" }[e.art];
   var zeilen = [["Punkte", s.punkte], ["Zeilen", s.linien], ["Stufe", s.level]];
   if (S.modus === "duell") zeilen.push(["Eier gelegt", s.eierGelegt], ["Eier bekommen", s.eierErhalten]);
-  if (S.variante === "wurf") zeilen.push(["Steine geworfen", s.gewuerfe], ["Steine bekommen", s.steineErhalten]);
-  else zeilen.push(["Rekord", e.rekord + (e.neuerRekord ? "  (neu!)" : "")]);
+  if (S.variante !== "eier") zeilen.push(["Steine geworfen", s.gewuerfe], ["Steine bekommen", s.steineErhalten]);
+  if (S.modus === "allein") zeilen.push(["Rekord", e.rekord + (e.neuerRekord ? "  (neu!)" : "")]);
   z.innerHTML = zeilen.map(function (q) { return "<span>" + q[0] + "</span><b>" + q[1] + "</b>"; }).join("");
   el("endeStatus").textContent = "";
   el("bNochmal").classList.toggle("weg", e.art === "abbruch");
@@ -97,9 +100,14 @@ VERB.aufNachricht = function (m) {
   } else if (m.t === "s") {
     if (VERB.rolle === "gast") neueRunde(m.seed >>> 0, "duell", m.v);
   } else if (m.t === "b") {
-    if (S.g) { S.g.abbild = String(m.a || S.g.abbild); S.g.eier = m.e | 0; }
+    if (S.g) { S.g.abbild = String(m.a || S.g.abbild); S.g.eier = m.e | 0; S.g.oben = m.o === undefined ? null : !!m.o; S.g.fremd = m.f || null; }
   } else if (m.t === "w") {
-    if (S.s && S.phase === "lauf") tSteinKommt(S.s, String(m.ty), m.r);
+    if (S.s && S.phase === "lauf") { if (m.ein) tFremdKommt(S.s, String(m.ty), m.r, m.y); else tSteinKommt(S.s, String(m.ty), m.r); }
+    else if (m.ein) VERB.senden({ t: "fe", v: 1 });                     // Runde laeuft hier nicht: Stein zurueckweisen
+  } else if (m.t === "fs") {                                             // Befehl fuer den Stein des Freundes in deinem Feld
+    if (S.s && S.phase === "lauf" && S.s.fremd) tFremdBefehl(S.s, String(m.a));
+  } else if (m.t === "fe") {                                             // dein Stein beim Freund ist eingebaut (oder verpufft): dein naechster kommt
+    if (S.s && S.s.draussen) { S.s.ev.push({ art: "eingebaut", verpufft: !!m.v }); tDraussenFertig(S.s); }
   } else if (m.t === "e") {
     if (S.s && S.phase === "lauf") tEierKommen(S.s, Math.max(1, Math.min(20, m.n | 0)), Math.max(0, Math.min(T_B - 1, m.l | 0)));
   } else if (m.t === "d") {
@@ -178,11 +186,17 @@ function gastBeitreten() {
   });
 }
 function wurfVersuch() {                          // ▶ an der Wand: Stein ueber das Tor zum Freund
-  var s = S.s;
-  if (!s || !s.tor || S.phase !== "lauf" || !tWurfMoeglich(s)) return;
-  if (S.g && !S.g.tot && /[^0]/.test(S.g.abbild.slice(0, 2 * T_B))) {   // sein Feld reicht bis oben: dort ist kein Platz fuer den Stein
-    FX.text("Sein Feld ist zu voll", ZEICH.lay.bx + 5 * ZEICH.lay.c, ZEICH.lay.by + 5 * ZEICH.lay.c, "#ff9aa8", 24); return;
+  var s = S.s, L = ZEICH.lay;
+  if (!s || !s.tor || S.phase !== "lauf" || !tWurfMoeglich(s) || !S.g || S.g.tot) return;
+  if (S.variante === "einbau") {                    // Einbauen: Platz am linken Rand seines Felds auf derselben Hoehe?
+    var st = tFremdStart(s.akt.typ, s.akt.rot, s.akt.y), ab = S.g.abbild;
+    var belegt = tZellen(st.typ, st.rot, st.x, st.y).some(function (q) { var i = (q[1] - T_VERDECKT) * T_B + q[0]; return i >= 0 && ab.charAt(i) !== "0"; });
+    if (belegt || S.g.fremd) { FX.text("Kein Platz am Tor", L.bx + 5 * L.c, L.by + 5 * L.c, "#ff9aa8", 24); return; }
+    tWurfRaus(s); S.draussenT = 0; return;
   }
+  // Ruebergeben: nur sein Feld zaehlt, nicht sein fallender Stein (aeltere Fassung ohne "oben": wie bisher am Abbild)
+  var voll = S.g.oben !== null && S.g.oben !== undefined ? S.g.oben : /[^0]/.test(S.g.abbild.slice(0, 2 * T_B));
+  if (voll) { FX.text("Sein Feld ist zu voll", L.bx + 5 * L.c, L.by + 5 * L.c, "#ff9aa8", 24); return; }
   tWurf(s);
 }
 function insMenue() {
@@ -198,9 +212,12 @@ function einrichten() {
   el("kTetris").onclick = function () { SOUND.start(); zeige("tmenu"); };
   el("bZurueck1").onclick = function () { zeige("menu"); };
   el("bAllein").onclick = function () { SOUND.start(); nameLesen(); neueRunde((Math.random() * 4294967296) >>> 0, "allein"); };
-  var modus = function (v) { S.wahl = v; el("mEier").classList.toggle("an", v === "eier"); el("mWurf").classList.toggle("an", v === "wurf");
-    el("modiText").textContent = v === "wurf" ? "Beide Felder nebeneinander. Ein Tor in der Wand öffnet sich: Stein dagegen schieben, und er kommt beim Freund als nächster Stein." : "Zeilen räumen legt dem Freund Eier ins Feld."; };
-  el("mEier").onclick = function () { modus("eier"); }; el("mWurf").onclick = function () { modus("wurf"); };
+  var modus = function (v) { S.wahl = v; el("mEier").classList.toggle("an", v === "eier"); el("mWurf").classList.toggle("an", v === "wurf"); el("mEinbau").classList.toggle("an", v === "einbau");
+    el("modiText").textContent = v === "wurf" ? "Beide Felder nebeneinander. Ein Tor in der Wand öffnet sich: Stein dagegen schieben, und er kommt beim Freund als nächster Stein."
+      : v === "einbau" ? "Beide Felder nebeneinander. Stein durchs offene Tor schieben: Er taucht beim Freund am Rand auf, du steuerst ihn dort und baust ihn ein. Erst dann kommt dein nächster Stein."
+      : "Zeilen räumen legt dem Freund Eier ins Feld."; };
+  el("mEier").onclick = function () { modus("eier"); }; el("mWurf").onclick = function () { modus("wurf"); }; el("mEinbau").onclick = function () { modus("einbau"); };
+  INPUT.fern = function (a) { if (S.modus === "duell") VERB.senden({ t: "fs", a: a }); };
   INPUT.aufWurf = wurfVersuch;
   el("bHost").onclick = function () { SOUND.start(); hostEroeffnen(); };
   el("bGast").onclick = function () { SOUND.start(); gastBeitreten(); };
@@ -244,11 +261,13 @@ function aktualisieren(dt) {
     if (S.zahl <= 0) { S.phase = "lauf"; INPUT.start(s); }
   } else if (S.phase === "lauf") {
     INPUT.schritt(dt, s); tSchritt(s, dt);
+    if (s.fremd) tFremdSchritt(s, dt);                                    // Stein des Freundes in deinem Feld
+    if (s.draussen) { S.draussenT += dt; if (S.draussenT > 30) tDraussenFertig(s); }   // Sicherheit: kommt keine Rueckmeldung, geht es nach 30 s weiter
     if (s.tor) tTorSchritt(s, dt);
     ereignisseAbarbeiten();
     if (S.modus === "duell") {
       S.sendT += dt;
-      if (S.sendT >= SENDE_TAKT) { S.sendT = 0; VERB.senden({ t: "b", a: tAbbild(s), e: tEierAnzahl(s) }); }
+      if (S.sendT >= SENDE_TAKT) { S.sendT = 0; VERB.senden({ t: "b", a: tAbbild(s), e: tEierAnzahl(s), o: tObenBelegt(s) ? 1 : 0, f: s.fremd ? [s.fremd.typ, s.fremd.rot, s.fremd.x, s.fremd.y] : 0 }); }
     }
     if (s.tot) {
       S.totZeit = performance.now();
