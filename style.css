@@ -6,7 +6,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #120a2e; col
 #fps { position: fixed; left: 6px; top: 6px; z-index: 9; font: 12px ui-monospace, Menlo, monospace; color: #9ae89a; background: rgba(0,0,0,.6); padding: 4px 8px; border-radius: 6px; pointer-events: none; }
 
 /* ---- Bildschirme ---- */
-.schirm { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px; text-align: center;
+/* Zentrieren ohne Abschneiden: ist der Inhalt hoeher als der Schirm, beginnt er oben und laesst sich scrollen (justify-content:center schnitt oben ab). */
+.schirm > :first-child { margin-top: auto; } .schirm > :last-child { margin-bottom: auto; }
+.schirm { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 14px; padding: 18px; text-align: center;
   background: radial-gradient(ellipse at 30% 20%, rgba(120,70,255,.45), transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(255,80,160,.35), transparent 55%), linear-gradient(180deg, #1b0f45, #0c0620); overflow-y: auto; touch-action: pan-y; }
 h1 { margin: 0; font-size: clamp(40px, 12vw, 76px); letter-spacing: .06em; font-weight: 900; text-shadow: 0 4px 24px rgba(0,0,0,.5); }
 h1 span { display: inline-block; animation: huepf 2.4s ease-in-out infinite; }
@@ -19,7 +21,7 @@ h2 { margin: 0; font-size: clamp(28px, 8vw, 42px); font-weight: 900; text-shadow
 .spende { margin: 10px 0 0; color: #8c7dc0; font-size: 13px; }
 .status { margin: 0; min-height: 20px; max-width: 340px; font-size: 14px; color: #ffd98a; }
 .kacheln { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-.kachel { width: 170px; padding: 16px 10px; border-radius: 22px; border: 2px solid rgba(255,255,255,.18); color: #fff; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;
+.kachel { width: min(170px, 42vw); padding: 16px 10px; border-radius: 22px; border: 2px solid rgba(255,255,255,.18); color: #fff; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;
   background: linear-gradient(160deg, rgba(120,80,255,.55), rgba(255,70,170,.35)); box-shadow: 0 8px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.35); transition: transform .12s; }
 a.kachel { text-decoration: none; background: rgba(255,255,255,.1); }
 .kachel:active { transform: scale(.96); }
