@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Lernen</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#fff3dc">
+<link rel="icon" href="../../icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --papier: #fff3dc; --papier2: #ffe9c2; --karte: #fffdf7; --tinte: #3b2f22; --sanft: #7a6a55; --rand: #ead9b8;
+    --gelb: #ffd25c; --gelb-d: #e0a91f; --blau: #8fdcf7; --blau-d: #3fa9d6; --gruen: #b4ec8c; --gruen-d: #6cbc45;
+    --rot: #ff8a80; --gut: #5cc96b; --gut-d: #3b9c48;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--papier); color: var(--tinte);
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
+  body { background: radial-gradient(ellipse at 20% 0%, #fff9ec, transparent 60%), radial-gradient(ellipse at 90% 100%, var(--papier2), transparent 60%), var(--papier); }
+  button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
+  .weg { display: none !important; }
+  .schirm { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: max(10px, env(safe-area-inset-top)) 16px max(52px, env(safe-area-inset-bottom)); overflow-y: auto; }
+  .buchst-svg { display: block; height: 100%; width: auto; overflow: visible; }
+
+  /* ---- Startseite ---- */
+  #hub { justify-content: center; }
+  h1 { margin: 0; font-size: clamp(38px, 11vw, 64px); font-weight: 900; letter-spacing: .02em; }
+  h1 span:nth-child(1) { color: #ff6b6b } h1 span:nth-child(2) { color: #f0a500 } h1 span:nth-child(3) { color: #3fa9d6 }
+  h1 span:nth-child(4) { color: #5cb85c } h1 span:nth-child(5) { color: #b07cff } h1 span:nth-child(6) { color: #ff8f3d }
+  .sprachen { display: flex; gap: 10px; }
+  .spr { border: 3px solid var(--rand); background: var(--karte); border-radius: 999px; padding: 10px 18px; font-size: 17px; font-weight: 800; color: var(--sanft); }
+  .spr.an { border-color: var(--blau-d); color: var(--tinte); background: #e6f7fe; }
+  .karten { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(760px, 100%); }
+  .karte { border: 0; border-radius: 30px; padding: 18px 8px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    box-shadow: 0 8px 0 var(--d), 0 14px 24px rgba(120, 80, 20, .15); background: var(--f); transition: transform .1s; min-height: 190px; justify-content: center; }
+  .karte:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--d); }
+  .karte.gelb { --f: var(--gelb); --d: var(--gelb-d); } .karte.blau { --f: var(--blau); --d: var(--blau-d); } .karte.gruen { --f: var(--gruen); --d: var(--gruen-d); }
+  .karte .bild { font-size: 58px; line-height: 1; }
+  .karte .buchst { height: 44px; color: var(--tinte); }
+  .karte b { font-size: 19px; font-weight: 900; }
+  .karte small { font-size: 15px; font-weight: 800; min-height: 18px; }
+  .hinweis { margin: 0; max-width: 520px; text-align: center; font-size: 14px; color: var(--sanft); line-height: 1.4; }
+  @media (max-width: 560px) { .karten { grid-template-columns: 1fr; max-width: 380px; } .karte { flex-direction: row; min-height: 0; padding: 14px 18px; gap: 14px; justify-content: flex-start; }
+    .karte .bild { font-size: 46px; } .karte .buchst { height: 36px; } .karte b { flex: 1; text-align: left; font-size: 21px; } }
+
+  /* ---- Leiste oben in den Spielen ---- */
+  .leiste { width: 100%; max-width: 760px; display: flex; align-items: center; gap: 8px; }
+  .leiste .punkte { flex: 1; display: flex; justify-content: center; gap: 8px; }
+  .punkte span { width: 16px; height: 16px; border-radius: 50%; background: var(--rand); transition: background .2s, transform .2s; }
+  .punkte span.voll { background: var(--gelb-d); transform: scale(1.15); }
+  .rund { width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--karte); font-size: 26px; box-shadow: 0 4px 0 var(--rand); flex: none; }
+  .rund:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--rand); }
+
+  /* ---- Antwortknoepfe ---- */
+  .optionen { width: 100%; max-width: 640px; display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .optionen.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 700px) { .optionen.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .opt { height: clamp(96px, 16vh, 140px); border: 3px solid var(--rand); background: var(--karte); border-radius: 26px; padding: 16px 10px;
+    box-shadow: 0 7px 0 var(--rand); display: flex; align-items: center; justify-content: center; transition: transform .1s, background .2s, opacity .2s; }
+  .opt:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--rand); }
+  .opt.richtig { background: var(--gut); border-color: var(--gut-d); box-shadow: 0 7px 0 var(--gut-d); color: #fff; animation: huepf .5s; }
+  .opt.falsch, .opt:disabled { opacity: .35; animation: wackel .4s; }
+  .opt .buchst-svg { height: 100%; max-width: 100%; }
+  .zahlen .opt { font-size: clamp(52px, 13vw, 76px); font-weight: 900; padding: 0; }
+  @keyframes wackel { 20%, 60% { transform: translateX(-8px) } 40%, 80% { transform: translateX(8px) } }
+  @keyframes huepf { 40% { transform: scale(1.08) } }
+
+  /* ---- Anlaute ---- */
+  .bildkarte { width: min(62vw, 34vh, 240px); aspect-ratio: 1; border: 0; border-radius: 36px; background: var(--karte); box-shadow: 0 8px 0 var(--rand), 0 16px 30px rgba(120, 80, 20, .12);
+    font-size: min(36vw, 20vh, 150px); line-height: 1; display: flex; align-items: center; justify-content: center; margin-top: 4px; }
+  .bildkarte:active { transform: scale(.97); }
+  .wort { font-size: clamp(34px, 9vw, 52px); font-weight: 900; min-height: 1.2em; letter-spacing: .03em; }
+  .wort .erster { color: #ff7a2f; }
+  .wort.klein { font-size: clamp(24px, 6vw, 34px); display: flex; align-items: center; gap: 10px; }
+  .wort .emo { font-size: 1.3em; }
+
+  /* ---- Nachspuren ---- */
+  .abc { width: 100%; max-width: 760px; display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; touch-action: pan-x; scrollbar-width: none; flex: none; }
+  .abc::-webkit-scrollbar { display: none; }
+  .abc button { flex: none; width: 44px; height: 44px; border-radius: 14px; border: 2px solid var(--rand); background: var(--karte); font-size: 22px; font-weight: 900; color: var(--sanft); }
+  .abc button.an { background: var(--blau); border-color: var(--blau-d); color: var(--tinte); }
+  #spFlaeche { flex: 1; width: 100%; max-width: 760px; min-height: 220px; position: relative; border-radius: 30px; background: var(--karte); box-shadow: 0 8px 0 var(--rand); overflow: hidden; }
+  #spCv { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+  /* ---- Rechnen ---- */
+  .bilder { width: 100%; max-width: 760px; min-height: 150px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; margin-top: 6px; }
+  .gruppe { display: grid; gap: 4px; padding: 10px; border-radius: 24px; background: var(--karte); box-shadow: 0 6px 0 var(--rand); }
+  .ding { border: 0; background: none; padding: 0; font-size: var(--g, 44px); line-height: 1.15; position: relative; transition: transform .25s, opacity .4s; }
+  .ding.gezaehlt::after { content: attr(data-n); position: absolute; right: -4px; top: -6px; min-width: 24px; height: 24px; border-radius: 12px; background: var(--blau-d); color: #fff; font: 900 15px/24px system-ui, sans-serif; text-align: center; }
+  .ding.fort { opacity: .3; transform: translateY(-6px) scale(.9); }
+  .ding.fort::before { content: ""; position: absolute; left: 8%; right: 8%; top: 50%; height: 5px; margin-top: -2px; background: #e5484d; border-radius: 3px; transform: rotate(-35deg); }
+  .zeichen { font-size: clamp(44px, 11vw, 64px); font-weight: 900; color: var(--sanft); }
+  .aufgabe { font-size: clamp(46px, 13vw, 76px); font-weight: 900; letter-spacing: .04em; }
+  .aufgabe .frage { color: #ff7a2f; }
+  .aufgabe .loesung { color: var(--gut-d); }
+
+  /* ---- Belohnung ---- */
+  #belohnung { justify-content: center; }
+  .stern { font-size: min(44vw, 200px); line-height: 1; animation: drehen 1.2s ease-out; }
+  .tier { font-size: min(22vw, 96px); animation: tanzen 1s ease-in-out infinite alternate; }
+  .zahl { font-size: 36px; font-weight: 900; }
+  .zeile { display: flex; gap: 16px; }
+  .gross { width: 120px; height: 96px; border-radius: 28px; border: 0; font-size: 46px; background: var(--karte); box-shadow: 0 7px 0 var(--rand); }
+  .gross.gelb { background: var(--gelb); box-shadow: 0 7px 0 var(--gelb-d); }
+  .gross:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--rand); }
+  @keyframes drehen { 0% { transform: scale(.2) rotate(-200deg); opacity: 0 } 70% { transform: scale(1.15) rotate(10deg); opacity: 1 } 100% { transform: scale(1) rotate(0) } }
+  @keyframes tanzen { from { transform: rotate(-12deg) translateY(0) } to { transform: rotate(12deg) translateY(-14px) } }
+
+  /* ---- Konfetti ---- */
+  #konfetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; }
+  .kf { position: absolute; width: 10px; height: 14px; border-radius: 3px; animation-timing-function: cubic-bezier(.2, .7, .4, 1); animation-fill-mode: forwards; }
+  .kf.stern { width: auto; height: auto; font-size: 22px; background: none; }
+  @keyframes fallen { to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: .2 } }
+  @keyframes platzen { to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0 } }
+</style>
+</head>
+<body>
+
+<!-- Startseite -->
+<section id="hub" class="schirm">
+  <h1><span>L</span><span>e</span><span>r</span><span>n</span><span>e</span><span>n</span></h1>
+  <div class="sprachen">
+    <button class="spr an" data-spr="de">🇩🇪 Deutsch</button>
+    <button class="spr" data-spr="en">🇬🇧 English</button>
+  </div>
+  <div class="karten">
+    <button class="karte gelb" id="kAnlaut"><span class="bild">🐭</span><span class="buchst" id="kAnlautSvg"></span><b>Anlaute</b><small class="sterne" data-spiel="anlaut"></small></button>
+    <button class="karte blau" id="kSpuren"><span class="bild">✏️</span><b>Nachspuren</b><small class="sterne" data-spiel="spuren"></small></button>
+    <button class="karte gruen" id="kRechnen"><span class="bild">🍎+🍎</span><b>Rechnen</b><small class="sterne" data-spiel="rechnen"></small></button>
+  </div>
+  <p class="hinweis" id="stimmeHinweis"></p>
+</section>
+
+<!-- Anlaute: Bild hoeren, Anfangsbuchstaben antippen -->
+<section id="anlaut" class="schirm weg">
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <button id="anBild" class="bildkarte" aria-label="Wort hören"></button>
+  <div id="anWort" class="wort">&nbsp;</div>
+  <div id="anOpt" class="optionen"></div>
+</section>
+
+<!-- Nachspuren: Buchstaben mit dem Finger nachfahren -->
+<section id="spuren" class="schirm weg">
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund" id="spNeu" aria-label="Von vorne">↺</button><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <div id="spLeiste" class="abc"></div>
+  <div id="spFlaeche"><canvas id="spCv"></canvas></div>
+  <div id="spWort" class="wort klein">&nbsp;</div>
+</section>
+
+<!-- Rechnen bis 10 mit Bildern -->
+<section id="rechnen" class="schirm weg">
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <div id="reBilder" class="bilder"></div>
+  <div id="reAufgabe" class="aufgabe"></div>
+  <div id="reOpt" class="optionen zahlen"></div>
+</section>
+
+<!-- Belohnung nach einer Runde -->
+<section id="belohnung" class="schirm weg">
+  <div class="stern">⭐</div>
+  <div id="beTier" class="tier"></div>
+  <div id="beZahl" class="zahl"></div>
+  <div class="zeile"><button class="gross gelb" id="beNochmal" aria-label="Nochmal">▶</button><button class="gross" id="beHeim" aria-label="Zur Übersicht">🏠</button></div>
+</section>
+
+<div id="konfetti"></div>
+
+<!-- Klassische Skripte, keine Module. Reihenfolge: stimme -> schrift -> woerter -> anlaut -> spuren -> rechnen -> lernen (startet alles) -->
+<script src="js/stimme.js"></script>
+<script src="js/schrift.js"></script>
+<script src="js/woerter.js"></script>
+<script src="js/anlaut.js"></script>
+<script src="js/spuren.js"></script>
+<script src="js/rechnen.js"></script>
+<script src="js/lernen.js"></script>
+<script src="../../zurueck.js"></script>
+</body>
+</html>
