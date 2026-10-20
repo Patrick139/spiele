@@ -36,7 +36,9 @@ var LERNEN = {
     for (var i = 0; i < n; i++) h += '<span class="' + (i < fertig ? "voll" : "") + '"></span>';
     for (var k = 0; k < p.length; k++) p[k].innerHTML = h;
   },
-  sterne: function () { return this.lies("sterne", { anlaut: 0, spuren: 0, rechnen: 0 }); },
+  sterne: function () { return this.lies("sterne", { anlaut: 0, spuren: 0, rechnen: 0, bauen: 0, fuettern: 0, uhr: 0 }); },
+  einstellung: function () { return this.lies("einstellung", { sprache: "de", uhrstil: "standard" }); },
+  setzeEinstellung: function (k, v) { var e = this.einstellung(); e[k] = v; this.schreib("einstellung", e); },
   belohnung: function (spiel, nochmal) {
     var st = this.sterne(); st[spiel] = (st[spiel] || 0) + 1; this.schreib("sterne", st);
     this.zeige("belohnung");
@@ -59,8 +61,58 @@ var LERNEN = {
   },
   setzeSprache: function (s) {
     if (!WOERTER[s]) return;
-    this.sprache = s; this.schreib("einstellung", { sprache: s });
+    this.sprache = s; this.setzeEinstellung("sprache", s);
     TOENE.tipp(); this.hubAuffrischen(); this.sagNur(this.W().name);
+  },
+
+  // Ein Bild (Emoji) fliegt von einem Element zu einem anderen, z. B. in Mampfis Mund
+  fliege: function (von, zu, ms, fertig) {
+    var a = von.getBoundingClientRect(), b = zu.getBoundingClientRect(), k = document.createElement("div");
+    k.className = "flieger"; k.textContent = von.textContent;
+    k.style.left = a.left + "px"; k.style.top = a.top + "px"; k.style.width = a.width + "px"; k.style.height = a.height + "px";
+    k.style.fontSize = window.getComputedStyle(von).fontSize;
+    document.body.appendChild(k);
+    var dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height * 0.62 - (a.top + a.height / 2);
+    void k.offsetWidth;
+    k.style.transition = "transform " + ms + "ms cubic-bezier(.45,-0.35,.7,1), opacity " + ms + "ms ease-in";
+    k.style.transform = "translate(" + dx + "px," + dy + "px) scale(.3) rotate(25deg)"; k.style.opacity = "0.15";
+    setTimeout(function () { if (k.parentNode) k.parentNode.removeChild(k); if (fertig) fertig(); }, ms + 20);
+  },
+
+  // ---- Einstellungen fuer Eltern: Stimme je Sprache, Sprechtempo, Sprechweise der Uhrzeit ----
+  stimmeLaden: function () {
+    var st = this.lies("stimme", { de: "", en: "", tempo: 0.88 });
+    STIMME.wahl.de = st.de || ""; STIMME.wahl.en = st.en || ""; STIMME.TEMPO = Math.max(0.6, Math.min(1.2, +st.tempo || 0.88));
+  },
+  stimmeSpeichern: function () { this.schreib("stimme", { de: STIMME.wahl.de, en: STIMME.wahl.en, tempo: STIMME.TEMPO }); },
+  einstellungen: function () {
+    TOENE.tipp(); this.zeige("einstellungen");
+    var self = this, box = this.el("einStimmen"), e = this.einstellung();
+    box.innerHTML = "";
+    ["de", "en"].forEach(function (spr) {
+      var l = STIMME.liste(spr), zeile = document.createElement("div");
+      zeile.className = "ein-zeile";
+      var titel = document.createElement("b"); titel.textContent = spr === "de" ? "🇩🇪 Deutsch" : "🇬🇧 English";
+      var sel = document.createElement("select");
+      sel.innerHTML = '<option value="">automatisch</option>' + l.map(function (v) { return '<option value="' + String(v.voiceURI).replace(/"/g, "&quot;") + '">' + v.name + " (" + v.lang + ")" + (v.localService ? "" : " · online") + "</option>"; }).join("");
+      sel.value = STIMME.wahl[spr] || "";
+      sel.onchange = function () { STIMME.wahl[spr] = sel.value; self.stimmeSpeichern(); STIMME.sag(spr === "de" ? "Hallo, ich bin Mampfi!" : "Hello, I'm Mampfi!", spr); };
+      var probe = document.createElement("button");
+      probe.className = "spr"; probe.textContent = "▶ Probe";
+      probe.onclick = function () { STIMME.sag(spr === "de" ? "Hallo, ich bin Mampfi! Wie spät ist es? Halb drei." : "Hello, I'm Mampfi! What time is it? Half past two.", spr); };
+      zeile.appendChild(titel); zeile.appendChild(sel); zeile.appendChild(probe);
+      if (!l.length) { var h = document.createElement("small"); h.textContent = STIMME.an ? "Keine Stimme für diese Sprache auf dem Gerät." : "Keine Sprachausgabe auf dem Gerät."; zeile.appendChild(h); }
+      box.appendChild(zeile);
+    });
+    var tempo = this.el("einTempo");
+    tempo.value = STIMME.TEMPO;
+    tempo.oninput = function () { STIMME.TEMPO = +tempo.value; self.stimmeSpeichern(); };
+    tempo.onchange = function () { self.sagNur(self.sprache === "en" ? "This is how fast I talk." : "So schnell spreche ich."); };
+    var stile = document.querySelectorAll("#einstellungen [name=uhrstil]");
+    for (var i = 0; i < stile.length; i++) {
+      stile[i].checked = stile[i].value === e.uhrstil;
+      stile[i].onchange = function () { self.setzeEinstellung("uhrstil", this.value); };
+    }
   },
 
   // Konfetti aus bunten Schnipseln und Sternen; um ein Element herum oder ueber den ganzen Schirm
@@ -82,7 +134,8 @@ var LERNEN = {
 
   init: function () {
     this.sprache = this.lies("einstellung", { sprache: "de" }).sprache === "en" ? "en" : "de";
-    STIMME.aufGeladen = function () { LERNEN.hubAuffrischen(); };
+    this.stimmeLaden();
+    STIMME.aufGeladen = function () { LERNEN.hubAuffrischen(); if (!LERNEN.el("einstellungen").classList.contains("weg")) LERNEN.einstellungen(); };
     STIMME.init();
     document.addEventListener("pointerdown", function () { TOENE.start(); }, true);
     var self = this, spr = document.querySelectorAll("#hub .spr");
@@ -91,6 +144,14 @@ var LERNEN = {
     this.el("kAnlaut").onclick = function () { TOENE.tipp(); ANLAUT.start(); };
     this.el("kSpuren").onclick = function () { TOENE.tipp(); SPUREN.start(); };
     this.el("kRechnen").onclick = function () { TOENE.tipp(); RECHNEN.start(); };
+    this.el("kBauenSvg").innerHTML = SCHRIFT.svgWort("Hund");
+    this.el("kBauen").onclick = function () { TOENE.tipp(); BAUEN.start(); };
+    this.el("kFuettern").onclick = function () { TOENE.tipp(); FUETTERN.start(); };
+    this.el("kUhr").onclick = function () { TOENE.tipp(); UHR.start(); };
+    this.el("kEinst").onclick = function () { self.einstellungen(); };
+    var hm = MAMPFI.einsetzen(this.el("hubMampfi"));
+    hm.onclick = function () { MAMPFI.kitzeln(hm); };
+    MAMPFI.einsetzen(this.el("fuMini"));
     var heim = document.querySelectorAll(".heim");
     for (var h = 0; h < heim.length; h++) heim[h].onclick = function () { self.heim(); };
     var ohr = document.querySelectorAll(".hoeren");
