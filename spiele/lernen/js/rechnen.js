@@ -1,10 +1,12 @@
 // rechnen.js — Plus und Minus bis 10 mit Bildern. Kein Modul; globales Objekt RECHNEN.
-// Stufen: 1 Plus bis 5, 2 Plus bis 10, 3 Minus bis 5, 4 Minus bis 10, 5 gemischt bis 10. Nach einer Runde mit mindestens 4 von 5 auf Anhieb
-// richtig geht es eine Stufe hinauf, bei hoechstens 2 von 5 eine hinunter. Bilder stehen in Fuenferreihen; Antippen zaehlt laut mit.
+// Stufen: 1 Plus bis 5, 2 Plus bis 10, 3 Minus bis 5, 4 Minus bis 10, 5 gemischt bis 10; jede Stufe mischt leichtere bei.
+// Stufenwechsel ueber LERNEN.fortschritt. Bilder stehen in Fuenferreihen; Antippen zaehlt laut mit.
 
 var RECHNEN = {
   DINGE: ["🍎", "🍓", "🐞", "⭐", "🐟", "🍪", "🎈", "🚗", "🐥", "🌸", "🍌", "🐢"],
-  nr: 0, gut: 0, a: null, erster: true, frei: false, zaehler: 0, letzte: "",
+  STUFEN: ["Plus bis 5", "Plus bis 10", "Minus bis 5", "Minus bis 10", "Plus und Minus bis 10"],
+  MAX: 5, nr: 0, gut: 0, a: null, erster: true, frei: false, zaehler: 0, letzte: "",
+  schluessel: function () { return "rechnen"; },
   stand: function () { return LERNEN.lies("rechnen", { stufe: 1 }); },
 
   start: function () { this.nr = 0; this.gut = 0; LERNEN.zeige("rechnen"); LERNEN.punkte(0); this.neu(); },
@@ -21,8 +23,9 @@ var RECHNEN = {
     return { a: a, b: b, op: "-", c: a - b };
   },
   neu: function () {
-    var W = LERNEN.W(), stufe = this.stand().stufe, t, n = 0;
-    do { t = this.aufgabe(stufe); } while (t.a + t.op + t.b === this.letzte && ++n < 10);
+    var W = LERNEN.W(), stufe = Math.min(this.MAX, Math.max(1, this.stand().stufe)), t, n = 0;
+    LERNEN.zeigeStufe(stufe);
+    do { t = this.aufgabe(stufe > 1 && Math.random() < 0.2 ? 1 + Math.floor(Math.random() * (stufe - 1)) : stufe); } while (t.a + t.op + t.b === this.letzte && ++n < 10);
     this.letzte = t.a + t.op + t.b;
     t.ding = LERNEN.zufall(this.DINGE);
     this.a = t; this.erster = true; this.frei = true; this.zaehler = 0;
@@ -84,8 +87,10 @@ var RECHNEN = {
       k.classList.add("richtig"); TOENE.richtig(); LERNEN.konfetti(16, k);
       if (this.erster) this.gut++;
       this.nr++; LERNEN.punkte(this.nr);
+      var hoch = LERNEN.fortschritt(this, this.erster) > 0, satz = W.saetze.rechnenRichtig(t.a, t.op, t.b, t.c);
+      if (hoch) { LERNEN.zeigeStufe(this.stand().stufe, true); LERNEN.konfetti(30); TOENE.stufe(); satz += " " + W.saetze.stufeHoch; }
       LERNEN.el("reAufgabe").innerHTML = t.a + (t.op === "+" ? " + " : " − ") + t.b + ' = <span class="loesung">' + t.c + "</span>";
-      var p = LERNEN.sagNur(LERNEN.lob() + " " + W.saetze.rechnenRichtig(t.a, t.op, t.b, t.c));
+      var p = LERNEN.sagNur(LERNEN.lob() + " " + satz);
       LERNEN.nachAnsage(p, function () { RECHNEN.weiter(); }, 350);
     } else {
       var hilfe = this.erster ? " " + W.saetze.zaehlTipp : "";
@@ -95,11 +100,5 @@ var RECHNEN = {
     }
   },
   weiter: function () { if (this.nr >= LERNEN.RUNDE) this.ende(); else this.neu(); },
-  ende: function () {
-    var st = this.stand();
-    if (this.gut >= 4 && st.stufe < 5) st.stufe++;
-    else if (this.gut <= 2 && st.stufe > 1) st.stufe--;
-    LERNEN.schreib("rechnen", st);
-    LERNEN.belohnung("rechnen", function () { RECHNEN.start(); });
-  }
+  ende: function () { LERNEN.belohnung("rechnen", function () { RECHNEN.start(); }); }
 };
