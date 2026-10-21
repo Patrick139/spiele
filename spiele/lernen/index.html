@@ -220,6 +220,31 @@
   .ein-zeile small { width: 100%; color: var(--sanft); }
   .ein-zeile input[type=radio] { flex: none; width: 22px; height: 22px; margin: 0; } .ein-zeile span { flex: 1; }
 
+  /* ---- Eigene Stimme (Aufnahmeseite) ---- */
+  .st-karte { width: min(620px, 100%); background: var(--karte); border-radius: 26px; padding: 16px 18px; box-shadow: 0 6px 0 var(--rand); display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
+  .st-gruppe { font-size: 14px; font-weight: 800; color: var(--sanft); }
+  .st-text { font-size: clamp(26px, 7vw, 40px); font-weight: 900; line-height: 1.2; min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+  .st-text.da { color: var(--gut-d); }
+  .st-hinweis { font-size: 14px; color: var(--sanft); min-height: 1.2em; }
+  .st-pegel { width: 100%; height: 10px; border-radius: 6px; background: #f1e6cf; overflow: hidden; }
+  .st-pegel i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gut), var(--gelb-d)); transition: width .05s; }
+  .st-status { font-size: 15px; font-weight: 800; min-height: 1.3em; }
+  .st-knoepfe { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .st-rec { min-width: 180px; height: 70px; border-radius: 35px; border: 0; background: #e5484d; color: #fff; font-size: 22px; font-weight: 900; box-shadow: 0 6px 0 #b8323a; }
+  .st-rec.laeuft { background: #3b2f22; box-shadow: 0 6px 0 #000; animation: pulsieren 1s infinite; }
+  @keyframes pulsieren { 50% { transform: scale(1.04); } }
+  .st-knoepfe .spr:disabled { opacity: .4; }
+  .st-karte .ein-zeile { text-align: left; width: 100%; }
+  .datei { cursor: pointer; }
+  #stAllesWeg.sicher { background: #e5484d; color: #fff; border-color: #b8323a; }
+  details.ein-box summary { font-weight: 900; font-size: 17px; cursor: pointer; }
+  #stListe h4 { margin: 14px 0 4px; font-size: 15px; color: var(--sanft); }
+  .st-zeile { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #f1e6cf; cursor: pointer; font-size: 15px; text-align: left; }
+  .st-zeile .st-t { flex: 1; } .st-zeile .st-haken { width: 18px; color: var(--sanft); } .st-zeile.da .st-haken { color: var(--gut-d); font-weight: 900; }
+  .st-play { border: 0; background: #e6f7fe; border-radius: 10px; padding: 4px 10px; }
+  .ein-zeile input[type=text] { flex: 1; min-width: 160px; font: inherit; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--rand); background: #fff; color: var(--tinte); user-select: text; -webkit-user-select: text; }
+  .ein-zeile input[type=checkbox] { flex: none; width: 22px; height: 22px; margin: 0; }
+
   /* ---- Konfetti ---- */
   #konfetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; }
   .kf { position: absolute; width: 10px; height: 14px; border-radius: 3px; animation-timing-function: cubic-bezier(.2, .7, .4, 1); animation-fill-mode: forwards; }
@@ -309,13 +334,45 @@
   <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div></div>
   <h2>Einstellungen</h2>
   <div class="ein-box">
-    <h3>Stimme</h3>
+    <h3>Kind</h3>
+    <label class="ein-zeile"><b>Name</b><input type="text" id="einName" maxlength="20" autocomplete="off" placeholder="Vorname"></label>
+    <p class="hinweis">Der Name bleibt nur auf diesem Gerät. Mampfi begrüßt damit und lobt ab und zu mit Namen; bei Wörter bauen kommt manchmal der eigene Name dran.</p>
+    <h3>Eigene Stimme</h3>
+    <label class="ein-zeile"><input type="checkbox" id="einEigen"><span>Eigene Aufnahmen verwenden (wo eine fehlt, spricht die Handystimme)</span></label>
+    <div class="ein-zeile"><button class="spr" id="einAufnahme">🎙️ Aufnehmen</button><small id="einAufnahmeStand"></small></div>
+    <h3>Handystimme</h3>
     <div id="einStimmen"></div>
     <label class="ein-zeile"><b>Tempo</b><input type="range" id="einTempo" min="0.6" max="1.2" step="0.02"></label>
     <h3>Uhrzeit sagen</h3>
     <label class="ein-zeile"><input type="radio" name="uhrstil" value="standard"><span>Viertel nach 3 · Viertel vor 4 · zwanzig nach 3</span></label>
     <label class="ein-zeile"><input type="radio" name="uhrstil" value="wien"><span>viertel 4 · dreiviertel 4 · zehn vor halb 4 (wienerisch)</span></label>
     <p class="hinweis">Gilt nur für dieses Gerät.</p>
+  </div>
+</section>
+
+<!-- Eigene Stimme: Satzteile aufnehmen (bleibt auf dem Geraet) -->
+<section id="stimme" class="schirm weg">
+  <div class="leiste"><button class="rund" id="stZurueck" aria-label="Zu den Einstellungen">⚙️</button><div class="punkte"></div><button class="rund heim" aria-label="Zur Übersicht">🏠</button></div>
+  <h2>Eigene Stimme</h2>
+  <div class="sprachen"><button class="spr an" data-st="de">🇩🇪 Deutsch <small id="stZahlDe"></small></button><button class="spr" data-st="en">🇬🇧 English <small id="stZahlEn"></small></button></div>
+  <div class="st-karte">
+    <div class="st-gruppe" id="stGruppe"></div>
+    <div class="st-text" id="stText"></div>
+    <div class="st-hinweis" id="stHinweis"></div>
+    <div class="st-pegel"><i id="stPegel"></i></div>
+    <div class="st-status" id="stStatus">Bereit. ● drücken und den Text sprechen.</div>
+    <div class="st-knoepfe"><button class="rund" id="stZurueckTeil" aria-label="Vorheriger">◀</button><button class="st-rec" id="stRec">● Aufnehmen</button><button class="rund" id="stVor" aria-label="Nächster">▶</button></div>
+    <div class="st-knoepfe"><button class="spr" id="stAnhoeren">🔊 Anhören</button><button class="spr" id="stLoeschen">✕ Löschen</button></div>
+    <label class="ein-zeile"><input type="checkbox" id="stAuto"><span><b>Durchsprechen:</b> nimmt alle fehlenden Teile nacheinander auf, ohne Tippen. Nach jedem Satz kurz still sein.</span></label>
+    <label class="ein-zeile"><input type="checkbox" id="stNurFehlend" checked><span>Nur fehlende zeigen</span></label>
+    <p class="hinweis">Am PC: Leertaste startet und stoppt, Pfeiltasten blättern.</p>
+  </div>
+  <details class="ein-box"><summary>Alle Teile</summary><div id="stListe"></div></details>
+  <div class="ein-box">
+    <h3>Sichern</h3>
+    <p class="hinweis">Die Aufnahmen bleiben in diesem Browser auf diesem Gerät, nichts davon kommt auf GitHub. Zum Sichern oder für ein anderes Gerät: Exportieren, dort Importieren (der Name des Kindes kommt mit). Die Datei nicht in den Ordner spiel-sammlung-web legen.</p>
+    <div class="ein-zeile"><button class="spr" id="stExport">⤓ Exportieren</button><label class="spr datei">⤒ Importieren<input type="file" id="stImport" accept=".json,application/json" hidden></label><button class="spr" id="stAllesWeg">Alle löschen</button></div>
+    <p class="hinweis" id="stSpeicher"></p>
   </div>
 </section>
 
@@ -333,6 +390,8 @@
 <script src="js/stimme.js"></script>
 <script src="js/schrift.js"></script>
 <script src="js/woerter.js"></script>
+<script src="js/ansage.js"></script>
+<script src="js/stimmbank.js"></script>
 <script src="js/mampfi.js"></script>
 <script src="js/anlaut.js"></script>
 <script src="js/spuren.js"></script>
@@ -340,6 +399,7 @@
 <script src="js/bauen.js"></script>
 <script src="js/fuettern.js"></script>
 <script src="js/uhr.js"></script>
+<script src="js/aufnahme.js"></script>
 <script src="js/lernen.js"></script>
 <script src="../../zurueck.js"></script>
 </body>

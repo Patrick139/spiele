@@ -56,7 +56,7 @@ var SPUREN = {
       if (an && knoepfe[i].scrollIntoView) knoepfe[i].scrollIntoView({ block: "nearest", inline: "center" });
     }
     LERNEN.el("spWort").innerHTML = "&nbsp;";
-    LERNEN.sag(W.saetze.spurenStart(W.namen[gross], this.z !== gross));
+    LERNEN.sag(ANSAGE.SAETZE.spurenStart(gross, this.z !== gross));
   },
   vonVorne: function () { if (this.fertig) return; this.strich = 0; this.fort = 0; this.aktiv = false; },
 
@@ -129,7 +129,7 @@ var SPUREN = {
     TOENE.richtig(); LERNEN.konfetti(22, LERNEN.el("spFlaeche"));
     this.nr++; LERNEN.punkte(this.nr, this.RUNDE);
     LERNEN.el("spWort").innerHTML = w ? '<span class="emo">' + w[1] + '</span><span><span class="erster">' + w[0].charAt(0) + "</span>" + w[0].slice(1) + "</span>" : "&nbsp;";
-    var p = LERNEN.sagNur(W.saetze.spurenFertig(W.namen[gross], w ? w[0] : ""));
+    var p = LERNEN.sagNur(ANSAGE.SAETZE.spurenFertig(gross, w ? w[0] : ""));
     LERNEN.nachAnsage(p, function () { SPUREN.weiter(); }, 450);
   },
   weiter: function () {

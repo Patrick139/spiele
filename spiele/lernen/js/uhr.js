@@ -43,6 +43,28 @@ var UHR = {
     if (m === 40) return wien ? M(10) + " nach halb " + H(h1) : M(20) + " vor " + H(h1);
     return M(60 - m) + " vor " + H(h1);                             // 50, 55
   },
+  // Uhrzeit als Ansage-Teile (fuer eigene Aufnahmen): Zahlen und kurze Satzteile wie "halb", "Viertel nach"
+  teile: function (T, spr) {
+    var A = ANSAGE, h = Math.floor(T / 60) % 12, m = T % 60, h1 = (h + 1) % 12, wien = this.stil() === "wien";
+    var Z = function (x) { return A.z(x === 0 ? 12 : x, spr); }, S = function (k) { return A.s(k, null, spr); };
+    if (spr === "en") {
+      if (m === 0) return [Z(h), S("uhUhr")];
+      if (m === 30) return [S("uhHalb"), Z(h)];
+      if (m === 15) return [S("uhViertelNach"), Z(h)];
+      if (m === 45) return [S("uhViertelVor"), Z(h1)];
+      return m < 30 ? [A.z(m, spr), S("uhNach"), Z(h)] : [A.z(60 - m, spr), S("uhVor"), Z(h1)];
+    }
+    if (m === 0) return h === 1 ? [S("uhEinUhr")] : [Z(h), S("uhUhr")];
+    if (m === 30) return [S("uhHalb"), Z(h1)];
+    if (m === 15) return wien ? [S("uhViertel"), Z(h1)] : [S("uhViertelNach"), Z(h)];
+    if (m === 45) return wien ? [S("uhDreiviertel"), Z(h1)] : [S("uhViertelVor"), Z(h1)];
+    if (m === 5 || m === 10) return [A.z(m, spr), S("uhNach"), Z(h)];
+    if (m === 20) return wien ? [A.z(10, spr), S("uhVorHalb"), Z(h1)] : [A.z(20, spr), S("uhNach"), Z(h)];
+    if (m === 25) return [A.z(5, spr), S("uhVorHalb"), Z(h1)];
+    if (m === 35) return [A.z(5, spr), S("uhNachHalb"), Z(h1)];
+    if (m === 40) return wien ? [A.z(10, spr), S("uhNachHalb"), Z(h1)] : [A.z(20, spr), S("uhVor"), Z(h1)];
+    return [A.z(60 - m, spr), S("uhVor"), Z(h1)];
+  },
   digital: function (T) { var h = Math.floor(T / 60) % 12, m = T % 60; return (h === 0 ? 12 : h) + ":" + (m < 10 ? "0" : "") + m; },
   zufallsZeit: function (stufe) {
     var h = Math.floor(Math.random() * 12), m = 0, r = Math.random();
@@ -134,8 +156,8 @@ var UHR = {
     this.stufe = stufe;
     var ziel, n = 0;
     do { ziel = this.zufallsZeit(stufe); } while (this.a && ziel === this.a.ziel && ++n < 10);
-    var modus = (this.nr % 2 === 0) ? "stellen" : "lesen", tag = LERNEN.zufall(this.TAG[spr]);
-    this.a = { ziel: ziel, modus: modus, tag: tag }; this.erster = true; this.frei = true;
+    var modus = (this.nr % 2 === 0) ? "stellen" : "lesen", tagNr = Math.floor(Math.random() * this.TAG[spr].length), tag = this.TAG[spr][tagNr];
+    this.a = { ziel: ziel, modus: modus, tag: tag, tagNr: tagNr }; this.erster = true; this.frei = true;
     LERNEN.el("uhUhr").classList.toggle("mit-minuten", stufe >= 4);
     LERNEN.el("uhDigital").innerHTML = "&nbsp;";
     MAMPFI.ruhe(LERNEN.el("uhMampfi"), null);
@@ -146,15 +168,16 @@ var UHR = {
       do { start = Math.floor(Math.random() * (720 / raster)) * raster; } while (start % 720 === ziel % 720);
       this.zeige(start);
       LERNEN.el("uhUhr").classList.add("stellbar");
-      LERNEN.el("uhText").textContent = tag[0] + " " + W.saetze.uhrStellen(this.text(ziel, spr, false), tag[1]);
+      var satz = ANSAGE.SAETZE.uhrStellen(this.teile(ziel, spr), tagNr);
+      LERNEN.el("uhText").textContent = tag[0] + " " + ANSAGE.text(satz);
       var ok = document.createElement("button");
       ok.className = "opt fertig-knopf"; ok.textContent = "✓"; ok.onclick = function () { self.pruefe(ok); };
       opt.className = "optionen n1"; opt.appendChild(ok);
-      LERNEN.sag(W.saetze.uhrStellen(this.text(ziel, spr, true), tag[1]));
+      LERNEN.sag(satz);
     } else {
       this.zeige(ziel);
       LERNEN.el("uhUhr").classList.remove("stellbar");
-      LERNEN.el("uhText").textContent = "🤔 " + W.saetze.uhrLesen;
+      LERNEN.el("uhText").textContent = "🤔 " + ANSAGE.text(ANSAGE.SAETZE.uhrLesen());
       var antworten = this.antworten(ziel, stufe);
       opt.className = "optionen n3 uhr-text";
       antworten.forEach(function (t) {
@@ -163,7 +186,7 @@ var UHR = {
         b.onclick = function () { self.waehle(t, b); };
         opt.appendChild(b);
       });
-      LERNEN.sag(W.saetze.uhrLesen);
+      LERNEN.sag(ANSAGE.SAETZE.uhrLesen());
     }
   },
   // Antworten zum Ablesen: richtig, eine Stunde daneben, vertauschte Zeiger, sonst eine andere Zeit der Stufe
@@ -187,16 +210,14 @@ var UHR = {
     setTimeout(function () { zeiger.classList.remove("blinkt"); }, 1600);
     k.classList.remove("wackelt"); void k.offsetWidth; k.classList.add("wackelt");
     MAMPFI.wundert(m); TOENE.falsch();
-    var hinweis = minFalsch ? W.saetze.uhrMinuten : W.saetze.uhrStunde;
-    if (!minFalsch && stdFalsch && a.ziel % 60 === 30) hinweis += " " + W.saetze.uhrHalb;
-    LERNEN.sagNur(hinweis);
+    LERNEN.sagNur(ANSAGE.SAETZE.uhrHinweis(minFalsch, !minFalsch && stdFalsch && a.ziel % 60 === 30));
   },
   waehle: function (t, b) {
     if (!this.frei || b.disabled) return;
     if (t === this.a.ziel) { this.richtig(b); return; }
     this.erster = false; b.disabled = true; b.classList.add("falsch");
     MAMPFI.wundert(LERNEN.el("uhMampfi")); TOENE.falsch();
-    LERNEN.sagNur(LERNEN.W().saetze.nochmal);
+    LERNEN.sagNur(ANSAGE.SAETZE.nochmal());
   },
   richtig: function (k) {
     var W = LERNEN.W(), a = this.a, spr = LERNEN.sprache;
@@ -207,7 +228,7 @@ var UHR = {
     LERNEN.el("uhUhr").classList.remove("stellbar");
     LERNEN.el("uhDigital").textContent = this.digital(a.ziel) + "  ·  " + this.text(a.ziel, spr, false);
     MAMPFI.jubelt(LERNEN.el("uhMampfi"));
-    var p = LERNEN.sagNur(LERNEN.lob() + " " + W.saetze.uhrRichtig(this.text(a.ziel, spr, true)));
+    var p = LERNEN.sagNur(ANSAGE.SAETZE.uhrRichtig(this.teile(a.ziel, spr)));
     LERNEN.nachAnsage(p, function () { UHR.weiter(); }, 700);
   },
   weiter: function () { if (this.nr >= this.RUNDE) this.ende(); else this.neu(); },

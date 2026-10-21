@@ -24,23 +24,8 @@ var MAMPFI = {
       '<g class="m-backen"><circle cx="64" cy="128" r="14" fill="#6fe0b9"/><circle cx="136" cy="128" r="14" fill="#6fe0b9"/></g>' +
     '</g></svg>',
 
-  SPRUECHE: {
-    de: {
-      hallo: ["Hallo! Ich bin Mampfi!", "Hast du was zu essen für mich?", "Kitzel mich nicht! Hihi!", "Ich hab so einen Hunger!", "Spielen wir was?"],
-      lecker: ["Mampf, mampf!", "Lecker!", "Hmmm, köstlich!", "Mehr davon!", "Njam njam!"],
-      ruelps: ["Rülps! Oh, Entschuldigung!", "Hupps! Pardon!", "Bäärp! Hihi!"],
-      jubel: ["Juhu!", "Hurra!", "Du bist super!", "Wahnsinn!", "Yippie!"],
-      ups: ["Hä?", "Hmm, komisch.", "Ups!", "Das schmeckt seltsam.", "Nochmal!"]
-    },
-    en: {
-      hallo: ["Hello! I'm Mampfi!", "Do you have some food for me?", "Don't tickle me! Hee hee!", "I'm so hungry!", "Shall we play?"],
-      lecker: ["Yum yum!", "Delicious!", "Mmm, tasty!", "More, please!", "Nom nom!"],
-      ruelps: ["Burp! Oops, excuse me!", "Whoops! Pardon me!", "Buuurp! Hee hee!"],
-      jubel: ["Hooray!", "Yippee!", "You're super!", "Amazing!", "Woohoo!"],
-      ups: ["Huh?", "Hmm, funny.", "Oops!", "That tastes strange.", "Try again!"]
-    }
-  },
-  spruch: function (art) { var l = (this.SPRUECHE[LERNEN.sprache] || this.SPRUECHE.de)[art] || [""]; return l[Math.floor(Math.random() * l.length)]; },
+  // Sprueche stehen in ANSAGE (Gruppe "Mampfi"), damit sie sich auch selbst aufnehmen lassen. Rueckgabe: Teil { k, t }
+  spruch: function (art) { return ANSAGE.zufall({ hallo: "mHallo", lecker: "mLecker", ruelps: "mRuelps", jubel: "mJubel", ups: "mUps" }[art] || "mUps"); },
 
   // Mampfi in ein Element setzen (leert es)
   einsetzen: function (el) {
@@ -68,15 +53,15 @@ var MAMPFI = {
     this.setze(el, "kaut", 900); TOENE.mampf();
     var self = this;
     setTimeout(function () {
-      if (mitRuelpser) { self.setze(el, "ruelpst", 900); TOENE.ruelps(); self.blase(el, self.spruch("ruelps"), 1600); }
-      else self.blase(el, self.spruch("lecker"), 1300);
+      if (mitRuelpser) { self.setze(el, "ruelpst", 900); TOENE.ruelps(); self.blase(el, self.spruch("ruelps").t, 1600); }
+      else self.blase(el, self.spruch("lecker").t, 1300);
     }, 950);
   },
-  jubelt: function (el) { this.setze(el, Math.random() < 0.5 ? "freut" : "tanzt", 1400); this.blase(el, this.spruch("jubel"), 1400); },
-  wundert: function (el) { this.setze(el, "verwirrt", 1100); TOENE.hae(); this.blase(el, this.spruch("ups"), 1200); },
+  jubelt: function (el) { this.setze(el, Math.random() < 0.5 ? "freut" : "tanzt", 1400); this.blase(el, this.spruch("jubel").t, 1400); },
+  wundert: function (el) { this.setze(el, "verwirrt", 1100); TOENE.hae(); this.blase(el, this.spruch("ups").t, 1200); },
   // Antippen: kichern und etwas sagen
   kitzeln: function (el) {
     var t = this.spruch("hallo");
-    this.setze(el, "freut", 900); this.blase(el, t, 1800); LERNEN.sagNur(t);
+    this.setze(el, "freut", 900); this.blase(el, t.t, 1800); LERNEN.sagNur([t]);
   }
 };
