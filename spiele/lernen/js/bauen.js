@@ -1,7 +1,7 @@
 // bauen.js — Woerter bauen: Bild sehen, Wort hoeren, Buchstaben-Kaertchen in der richtigen Reihenfolge antippen. Deutsch und Englisch.
 // Stufen 1-5: Woerter nach Schwierigkeit (Laenge plus Stolpersteine wie sch, ie, Doppelbuchstaben, Dehnungs-h; englisch sh, ee, stummes e),
-// ab Stufe 3 kommen falsche Kaertchen dazu (1, 2, 3). Stufe 6: ganze Tastatur. Nach >= 4 von 5 auf Anhieb richtig eine Stufe hinauf,
-// bei <= 2 von 5 hinunter. Stand je Sprache: lernen_bauen_de / _en. Kein Modul; globales Objekt BAUEN.
+// ab Stufe 3 kommen falsche Kaertchen dazu (1, 2, 3). Stufe 6: ganze Tastatur. Stufenwechsel ueber LERNEN.fortschritt.
+// Stand je Sprache: lernen_bauen_de / _en. Kein Modul; globales Objekt BAUEN.
 
 var BAUEN = {
   // [Bild, Deutsch, Englisch, Art] — Art: e = Essen (Mampfi frisst es), t = Tier, d = Ding. null = in dieser Sprache nicht dabei
@@ -29,6 +29,8 @@ var BAUEN = {
     de: ["sch", "ch", "ck", "ie", "ei", "eu", "äu", "au", "pf", "tz", "ng", "qu", "ä", "ö", "ü", "ah", "eh", "ih", "oh", "uh"],
     en: ["sh", "ch", "th", "ck", "ee", "oo", "ea", "ai", "ay", "ow", "ou", "ir", "er", "ar", "or", "wh", "igh", "oe", "ey"]
   },
+  STUFEN: ["die leichtesten Wörter", "leichte Wörter", "mittlere Wörter, 1 falsches Kärtchen", "schwerere Wörter, 2 falsche Kärtchen",
+    "schwere Wörter (sch, ie, Doppelbuchstaben), 3 falsche Kärtchen", "ganze Tastatur"],
   RUNDE: 5, MAX: 6, nr: 0, gut: 0, a: null, pos: 0, fehler: 0, erster: true, frei: false, zuletzt: [], stufenCache: {},
 
   schluessel: function () { return "bauen_" + LERNEN.sprache; },
@@ -61,6 +63,7 @@ var BAUEN = {
   },
   neu: function () {
     var spr = LERNEN.sprache, W = LERNEN.W(), stufe = Math.min(this.MAX, Math.max(1, this.stand().stufe)), g = this.stufen(spr);
+    LERNEN.zeigeStufe(stufe);
     var gruppe = stufe >= 6 ? g[2].concat(g[3], g[4]) : (Math.random() < 0.7 || stufe === 1 ? g[stufe - 1] : g[Math.floor(Math.random() * (stufe - 1))]);
     var self = this, kand = gruppe.filter(function (k) { return self.zuletzt.indexOf(k.wort) < 0; });
     if (!kand.length) kand = gruppe;
@@ -128,6 +131,8 @@ var BAUEN = {
     var a = this.a, W = LERNEN.W(), m = LERNEN.el("baMampfi"), bild = LERNEN.el("baBild"), andereSpr = LERNEN.sprache === "de" ? "en" : "de";
     this.frei = false; if (this.erster) this.gut++;
     this.nr++; LERNEN.punkte(this.nr);
+    var hoch = LERNEN.fortschritt(this, this.erster) > 0;
+    if (hoch) LERNEN.zeigeStufe(this.stand().stufe, true);
     LERNEN.el("baFelder").classList.add("geschafft");
     setTimeout(function () { LERNEN.el("baFelder").classList.remove("geschafft"); }, 900);
     TOENE.richtig();
@@ -135,18 +140,13 @@ var BAUEN = {
     LERNEN.el("baUebers").innerHTML = anders ? '<button class="uebers" data-spr="' + andereSpr + '">' + (andereSpr === "en" ? "🇬🇧 " : "🇩🇪 ") + anders + " 🔊</button>" : "&nbsp;";
     var ub = LERNEN.el("baUebers").querySelector(".uebers");
     if (ub) ub.onclick = function () { TOENE.tipp(); STIMME.sag(anders, andereSpr); };
+    if (hoch) { MAMPFI.begeistert(m); LERNEN.konfetti(30); }
     if (a.art === "e") {
-      LERNEN.fliege(bild, m, 650, function () { bild.classList.add("weg-geflogen"); MAMPFI.frisst(m, Math.random() < 0.35); });
-    } else { MAMPFI.jubelt(m); LERNEN.konfetti(18, bild); }
-    var p = LERNEN.sagNur(LERNEN.lob() + " " + a.wort + ".");
+      LERNEN.fliege(bild, m, 650, function () { bild.classList.add("weg-geflogen"); if (!hoch) MAMPFI.frisst(m, Math.random() < 0.35); });
+    } else { if (!hoch) MAMPFI.jubelt(m); LERNEN.konfetti(18, bild); }
+    var p = LERNEN.sagNur(LERNEN.lob() + " " + a.wort + "." + (hoch ? " " + W.saetze.stufeHoch : ""));
     LERNEN.nachAnsage(p, function () { BAUEN.weiter(); }, 1300);
   },
   weiter: function () { if (this.nr >= this.RUNDE) this.ende(); else this.neu(); },
-  ende: function () {
-    var st = this.stand();
-    if (this.gut >= 4 && st.stufe < this.MAX) st.stufe++;
-    else if (this.gut <= 2 && st.stufe > 1) st.stufe--;
-    LERNEN.schreib(this.schluessel(), st);
-    LERNEN.belohnung("bauen", function () { BAUEN.start(); });
-  }
+  ende: function () { LERNEN.belohnung("bauen", function () { BAUEN.start(); }); }
 };

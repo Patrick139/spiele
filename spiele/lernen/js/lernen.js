@@ -38,6 +38,30 @@ var LERNEN = {
   },
   sterne: function () { return this.lies("sterne", { anlaut: 0, spuren: 0, rechnen: 0, bauen: 0, fuettern: 0, uhr: 0 }); },
   einstellung: function () { return this.lies("einstellung", { sprache: "de", uhrstil: "standard" }); },
+
+  // ---- Stufen: 3 Aufgaben hintereinander auf Anhieb richtig -> eine Stufe hinauf; 2 Aufgaben hintereinander mit Fehlern -> eine hinunter.
+  // In den Einstellungen laesst sich die Stufe je Spiel setzen und festhalten (dann aendert sie sich nicht von selbst).
+  // spiel braucht schluessel(), stand() und MAX. Rueckgabe: 1 hinauf, -1 hinunter, 0 gleich.
+  HOCH: 3, RUNTER: 2,
+  fortschritt: function (spiel, aufAnhieb) {
+    var st = spiel.stand(), erg = 0;
+    if (st.fest) return 0;
+    if (aufAnhieb) { st.serie = (st.serie || 0) + 1; st.fehler = 0; if (st.serie >= this.HOCH && st.stufe < spiel.MAX) { st.stufe++; st.serie = 0; erg = 1; } }
+    else { st.fehler = (st.fehler || 0) + 1; st.serie = 0; if (st.fehler >= this.RUNTER && st.stufe > 1) { st.stufe--; st.fehler = 0; erg = -1; } }
+    this.schreib(spiel.schluessel(), st);
+    return erg;
+  },
+  setzeStufe: function (spiel, n, fest) {
+    var k = spiel === BAUEN ? ["bauen_de", "bauen_en"] : [spiel.schluessel()], self = this;
+    k.forEach(function (x) { self.schreib(x, { stufe: n, fest: !!fest, serie: 0, fehler: 0 }); });
+  },
+  zeigeStufe: function (n, hoch) {
+    var c = document.querySelector(".schirm:not(.weg) .stufe-chip");
+    if (!c) return;
+    c.textContent = (this.sprache === "en" ? "Level " : "Stufe ") + n;
+    c.classList.remove("hoch");
+    if (hoch) { void c.offsetWidth; c.classList.add("hoch"); }
+  },
   setzeEinstellung: function (k, v) { var e = this.einstellung(); e[k] = v; this.schreib("einstellung", e); },
   belohnung: function (spiel, nochmal) {
     var st = this.sterne(); st[spiel] = (st[spiel] || 0) + 1; this.schreib("sterne", st);
@@ -108,11 +132,41 @@ var LERNEN = {
     tempo.value = STIMME.TEMPO;
     tempo.oninput = function () { STIMME.TEMPO = +tempo.value; self.stimmeSpeichern(); };
     tempo.onchange = function () { self.sagNur(self.sprache === "en" ? "This is how fast I talk." : "So schnell spreche ich."); };
+    this.stufenZeichnen();
     var stile = document.querySelectorAll("#einstellungen [name=uhrstil]");
     for (var i = 0; i < stile.length; i++) {
       stile[i].checked = stile[i].value === e.uhrstil;
       stile[i].onchange = function () { self.setzeEinstellung("uhrstil", this.value); };
     }
+  },
+
+  // Je Spiel: Stufe waehlen (Knoepfe 1..MAX), Beschreibung, festhalten
+  stufenZeichnen: function () {
+    var self = this, box = this.el("einStufen");
+    box.innerHTML = "";
+    [["🍪 Mampfi füttern", FUETTERN], ["🕒 Uhr", UHR], ["🧩 Wörter bauen", BAUEN], ["🍎 Rechnen", RECHNEN]].forEach(function (x) {
+      var spiel = x[1], z = document.createElement("div"), chips = document.createElement("div"), text = document.createElement("small"), fest = document.createElement("label");
+      z.className = "stufen-zeile"; chips.className = "chips";
+      z.innerHTML = "<b>" + x[0] + "</b>";
+      fest.className = "fest"; fest.innerHTML = '<input type="checkbox"><span>festhalten</span>';
+      var cb = fest.querySelector("input");
+      var mal = function () {
+        var st = spiel.stand(), n = Math.min(spiel.MAX, Math.max(1, st.stufe));
+        Array.prototype.forEach.call(chips.children, function (b) { b.classList.toggle("an", +b.getAttribute("data-s") === n); });
+        text.textContent = "Stufe " + n + ": " + spiel.STUFEN[n - 1];
+        cb.checked = !!st.fest;
+      };
+      for (var i = 1; i <= spiel.MAX; i++) {
+        var b = document.createElement("button");
+        b.textContent = i; b.setAttribute("data-s", i); b.setAttribute("aria-label", "Stufe " + i + ": " + spiel.STUFEN[i - 1]);
+        b.onclick = function () { TOENE.tipp(); self.setzeStufe(spiel, +this.getAttribute("data-s"), cb.checked); mal(); };
+        chips.appendChild(b);
+      }
+      cb.onchange = function () { self.setzeStufe(spiel, Math.min(spiel.MAX, Math.max(1, spiel.stand().stufe)), cb.checked); mal(); };
+      z.appendChild(chips); z.appendChild(text); z.appendChild(fest);
+      box.appendChild(z);
+      mal();
+    });
   },
 
   // Konfetti aus bunten Schnipseln und Sternen; um ein Element herum oder ueber den ganzen Schirm
@@ -138,6 +192,7 @@ var LERNEN = {
     STIMME.aufGeladen = function () { LERNEN.hubAuffrischen(); if (!LERNEN.el("einstellungen").classList.contains("weg")) LERNEN.einstellungen(); };
     STIMME.init();
     document.addEventListener("pointerdown", function () { TOENE.start(); }, true);
+    MAMPFI.init();
     var self = this, spr = document.querySelectorAll("#hub .spr");
     for (var i = 0; i < spr.length; i++) (function (b) { b.onclick = function () { self.setzeSprache(b.getAttribute("data-spr")); }; })(spr[i]);
     this.el("kAnlautSvg").innerHTML = SCHRIFT.svgPaar("M");

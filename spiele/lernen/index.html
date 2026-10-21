@@ -130,18 +130,62 @@
   .mampfi .m-augen { transform-box: view-box; transform-origin: 100px 92px; animation: blinzeln 4.6s infinite; }
   .mampfi .m-arm-l { transform-box: view-box; transform-origin: 44px 108px; transition: transform .2s; }
   .mampfi .m-arm-r { transform-box: view-box; transform-origin: 156px 108px; transition: transform .2s; }
-  .mampfi .m-pupillen { transition: transform .2s; }
-  .mampfi .m-brauen, .mampfi .m-mund-auf, .mampfi .m-mund-schief, .mampfi .m-backen { opacity: 0; }
-  .mampfi.m-offen .m-mund-auf, .mampfi.m-freut .m-mund-auf, .mampfi.m-tanzt .m-mund-auf, .mampfi.m-ruelpst .m-mund-auf { opacity: 1; }
-  .mampfi.m-offen .m-mund-zu, .mampfi.m-freut .m-mund-zu, .mampfi.m-tanzt .m-mund-zu, .mampfi.m-ruelpst .m-mund-zu, .mampfi.m-verwirrt .m-mund-zu { opacity: 0; }
+  /* Augen schauen zum Finger (--bx/--by setzt mampfi.js); Teile, die nur bei bestimmten Gesichtern zu sehen sind, sind sonst unsichtbar */
+  .mampfi .m-pup { transform-box: fill-box; transform-origin: center; transform: translate(var(--bx, 0px), var(--by, 0px)); transition: transform .25s; }
+  .mampfi .m-auge { transform-box: fill-box; transform-origin: center; transition: transform .2s; }
+  .mampfi .m-brauen, .mampfi .m-mund-auf, .mampfi .m-mund-schief, .mampfi .m-backen, .mampfi .m-lider, .mampfi .m-froh-l, .mampfi .m-froh-r, .mampfi .m-zu,
+  .mampfi .m-kneif, .mampfi .m-herzen, .mampfi .m-sterne, .mampfi .m-brauen-hoch, .mampfi .m-zunge, .mampfi .m-mund-o, .mampfi .m-mund-gaehn,
+  .mampfi .m-tropfen, .mampfi .m-zzz { opacity: 0; }
+  .mampfi .m-herz, .mampfi .m-stern, .mampfi .m-rot ellipse { transform-box: fill-box; transform-origin: center; transition: transform .25s; }
+  /* Muender */
+  .mampfi.m-offen .m-mund-auf, .mampfi.m-freut .m-mund-auf, .mampfi.m-tanzt .m-mund-auf, .mampfi.m-ruelpst .m-mund-auf, .mampfi.m-lacht .m-mund-auf,
+  .mampfi.m-begeistert .m-mund-auf, .mampfi.m-niest .m-mund-auf { opacity: 1; }
+  .mampfi.m-offen .m-mund-zu, .mampfi.m-freut .m-mund-zu, .mampfi.m-tanzt .m-mund-zu, .mampfi.m-ruelpst .m-mund-zu, .mampfi.m-verwirrt .m-mund-zu,
+  .mampfi.m-lacht .m-mund-zu, .mampfi.m-begeistert .m-mund-zu, .mampfi.m-niest .m-mund-zu, .mampfi.m-staunt .m-mund-zu, .mampfi.m-erschrickt .m-mund-zu,
+  .mampfi.m-gaehnt .m-mund-zu, .mampfi.m-denkt .m-mund-zu, .mampfi.m-schlaeft .m-mund-zu { opacity: 0; }
+  .mampfi.m-verwirrt .m-mund-schief, .mampfi.m-denkt .m-mund-schief { opacity: 1; }
+  .mampfi.m-staunt .m-mund-o, .mampfi.m-erschrickt .m-mund-o, .mampfi.m-schlaeft .m-mund-o { opacity: 1; }
+  .mampfi.m-schlaeft .m-mund-o { transform-box: fill-box; transform-origin: center; transform: scale(.55); }
+  .mampfi.m-gaehnt .m-mund-gaehn { opacity: 1; }
+  .mampfi.m-frech .m-zunge, .mampfi.m-schielt .m-zunge { opacity: 1; }
+  /* Augen */
+  .mampfi.m-lacht .m-augen, .mampfi.m-begeistert .m-augen, .mampfi.m-verliebt .m-augen, .mampfi.m-schlaeft .m-augen, .mampfi.m-niest .m-augen { opacity: 0; }
+  .mampfi.m-lacht .m-froh-l, .mampfi.m-lacht .m-froh-r, .mampfi.m-zwinkert .m-froh-r, .mampfi.m-frech .m-froh-l { opacity: 1; }
+  .mampfi.m-zwinkert .m-auge-r, .mampfi.m-frech .m-auge-l { opacity: 0; }
+  .mampfi.m-schlaeft .m-zu, .mampfi.m-niest .m-kneif, .mampfi.m-gaehnt .m-lider { opacity: 1; }
+  .mampfi.m-verliebt .m-herzen { opacity: 1; } .mampfi.m-verliebt .m-herz { animation: pochen .55s ease-in-out infinite; }
+  .mampfi.m-verliebt .m-rot ellipse { transform: scale(1.4); opacity: 1; }
+  .mampfi.m-begeistert .m-sterne { opacity: 1; } .mampfi.m-begeistert .m-stern { animation: sternDreh 1s ease-in-out infinite; }
+  .mampfi.m-staunt .m-auge, .mampfi.m-erschrickt .m-auge { transform: scale(1.14); }
+  .mampfi.m-staunt .m-pup, .mampfi.m-erschrickt .m-pup { transform: scale(.68); }
+  .mampfi.m-staunt .m-brauen-hoch, .mampfi.m-erschrickt .m-brauen-hoch, .mampfi.m-erschrickt .m-tropfen { opacity: 1; }
+  .mampfi.m-verwirrt .m-brauen { opacity: 1; } .mampfi.m-verwirrt .m-pup { transform: translate(-4px, -4px); }
+  .mampfi.m-schielt .m-pup-l { transform: translate(6px, 2px); } .mampfi.m-schielt .m-pup-r { transform: translate(-6px, 2px); }
+  .mampfi.m-denkt .m-pup { transform: translate(5px, -7px); }
+  .mampfi.m-ruelpst .m-backen { opacity: 1; }
+  .mampfi.m-schlaeft .m-zzz { opacity: 1; } .mampfi.m-schlaeft .m-zzz text { transform-box: fill-box; animation: zzz 2.4s ease-out infinite; opacity: 0; }
+  .mampfi.m-schlaeft .m-zzz text:nth-child(2) { animation-delay: .8s; } .mampfi.m-schlaeft .m-zzz text:nth-child(3) { animation-delay: 1.6s; }
+  /* Koerper und Arme */
   .mampfi.m-kaut .m-mund-auf { animation: kauA .26s steps(1) infinite; } .mampfi.m-kaut .m-mund-zu { animation: kauB .26s steps(1) infinite; }
   .mampfi.m-kaut .m-koerper { animation: kauWackel .26s infinite; }
-  .mampfi.m-freut .m-koerper { animation: freuHuepf .45s ease-in-out 3; }
-  .mampfi.m-freut .m-arm-l, .mampfi.m-tanzt .m-arm-l { transform: rotate(115deg); } .mampfi.m-freut .m-arm-r, .mampfi.m-tanzt .m-arm-r { transform: rotate(-115deg); }
+  .mampfi.m-freut .m-koerper, .mampfi.m-begeistert .m-koerper { animation: freuHuepf .45s ease-in-out 3; }
+  .mampfi.m-freut .m-arm-l, .mampfi.m-tanzt .m-arm-l, .mampfi.m-begeistert .m-arm-l { transform: rotate(115deg); }
+  .mampfi.m-freut .m-arm-r, .mampfi.m-tanzt .m-arm-r, .mampfi.m-begeistert .m-arm-r { transform: rotate(-115deg); }
   .mampfi.m-tanzt .m-koerper { animation: tanzen2 .42s ease-in-out infinite alternate; }
-  .mampfi.m-verwirrt .m-brauen, .mampfi.m-verwirrt .m-mund-schief { opacity: 1; }
-  .mampfi.m-verwirrt .m-koerper { animation: wackel .5s; } .mampfi.m-verwirrt .m-pupillen { transform: translate(-4px, -4px); }
-  .mampfi.m-ruelpst .m-backen { opacity: 1; } .mampfi.m-ruelpst .m-koerper { animation: ruelpsen .8s; }
+  .mampfi.m-verwirrt .m-koerper { animation: wackel .5s; }
+  .mampfi.m-ruelpst .m-koerper { animation: ruelpsen .8s; }
+  .mampfi.m-lacht .m-koerper { animation: kichern .3s ease-in-out 5; } .mampfi.m-lacht .m-arm-l { transform: rotate(45deg); } .mampfi.m-lacht .m-arm-r { transform: rotate(-45deg); }
+  .mampfi.m-zwinkert .m-koerper { animation: neigen 1s ease-in-out; } .mampfi.m-zwinkert .m-arm-r { transform: rotate(-125deg); }
+  .mampfi.m-verliebt .m-koerper { animation: schweben .8s ease-in-out infinite alternate; }
+  .mampfi.m-staunt .m-koerper { animation: staunen .6s ease-out; }
+  .mampfi.m-erschrickt .m-koerper { animation: schreck .9s ease-out; } .mampfi.m-erschrickt .m-arm-l { transform: rotate(128deg); } .mampfi.m-erschrickt .m-arm-r { transform: rotate(-128deg); }
+  .mampfi.m-frech .m-koerper { animation: frech .36s ease-in-out 3; }
+  .mampfi.m-schielt .m-koerper { animation: taumeln .7s ease-in-out 2; }
+  .mampfi.m-gaehnt .m-koerper { animation: strecken 2s ease-in-out; } .mampfi.m-gaehnt .m-arm-l { transform: rotate(135deg); } .mampfi.m-gaehnt .m-arm-r { transform: rotate(-135deg); }
+  .mampfi.m-gaehnt .m-arm { transition: transform .6s; }
+  .mampfi.m-schlaeft .m-koerper { animation: atmen 2.6s ease-in-out infinite; }
+  .mampfi.m-niest .m-koerper { animation: niesen .75s ease-out; }
+  .mampfi.m-denkt .m-koerper { transform: rotate(4deg); transition: transform .3s; } .mampfi.m-denkt .m-arm-r { transform: rotate(-130deg); animation: kratzen .3s ease-in-out 4; }
   .m-blase { position: absolute; left: 50%; bottom: 96%; transform: translateX(-50%); background: #fff; border: 3px solid var(--tinte); border-radius: 18px;
     padding: 6px 12px; font-weight: 900; font-size: 15px; white-space: nowrap; z-index: 5; box-shadow: 0 4px 0 rgba(0, 0, 0, .08); animation: blaseRein .25s; pointer-events: none; }
   .m-blase::after { content: ""; position: absolute; left: 50%; top: 100%; border: 8px solid transparent; border-top-color: var(--tinte); transform: translateX(-50%); }
@@ -153,6 +197,20 @@
   @keyframes tanzen2 { from { transform: rotate(-10deg) } to { transform: rotate(10deg) } }
   @keyframes ruelpsen { 20% { transform: scale(1.14, .88) } 45% { transform: scale(.94, 1.07) } }
   @keyframes blaseRein { from { transform: translateX(-50%) scale(.6); opacity: 0 } }
+  @keyframes pochen { 50% { transform: scale(1.2) } }
+  @keyframes sternDreh { 0% { transform: rotate(0) scale(1) } 50% { transform: rotate(36deg) scale(1.15) } 100% { transform: rotate(72deg) scale(1) } }
+  @keyframes zzz { 0% { transform: translate(0, 6px); opacity: 0 } 25% { opacity: 1 } 100% { transform: translate(12px, -20px); opacity: 0 } }
+  @keyframes kichern { 0%, 100% { transform: translateY(0) rotate(0) } 25% { transform: translateY(-7px) rotate(-3deg) } 75% { transform: translateY(-7px) rotate(3deg) } }
+  @keyframes neigen { 40%, 70% { transform: rotate(-8deg) } }
+  @keyframes schweben { from { transform: rotate(-4deg) translateY(0) } to { transform: rotate(4deg) translateY(-6px) } }
+  @keyframes staunen { 30% { transform: translateY(-12px) scale(1.04, .96) } }
+  @keyframes schreck { 15% { transform: translateY(-30px) scale(.96, 1.06) } 35% { transform: translateY(0) scale(1.06, .94) } 50%, 70%, 90% { transform: translateX(-5px) } 60%, 80% { transform: translateX(5px) } }
+  @keyframes frech { 25% { transform: rotate(-7deg) } 75% { transform: rotate(7deg) } }
+  @keyframes taumeln { 25% { transform: rotate(-6deg) translateX(-5px) } 75% { transform: rotate(6deg) translateX(5px) } }
+  @keyframes strecken { 30%, 75% { transform: scale(.96, 1.07) } }
+  @keyframes atmen { 50% { transform: scale(1.03, .97) } }
+  @keyframes niesen { 0% { transform: scale(1) } 35% { transform: scale(1.05, .95) rotate(-5deg) translateY(-4px) } 50% { transform: rotate(9deg) translateY(5px) scale(.96, 1.04) } 100% { transform: none } }
+  @keyframes kratzen { 50% { transform: rotate(-116deg) } }
   .flieger { position: fixed; z-index: 60; pointer-events: none; display: flex; align-items: center; justify-content: center; line-height: 1; }
 
   /* ---- Gemeinsam fuer die neuen Spiele ---- */
@@ -160,7 +218,7 @@
   .mampfi-s { width: min(32vw, 150px); }
   .bildkarte.klein { width: min(38vw, 22vh, 170px); font-size: min(24vw, 13vh, 110px); margin: 0; }
   .bildkarte.weg-geflogen { font-size: 0 !important; }
-  .geschichte { font-size: clamp(17px, 4.6vw, 23px); font-weight: 800; text-align: center; max-width: 620px; line-height: 1.35; min-height: 2.7em; display: flex; align-items: center; justify-content: center; }
+  .geschichte { font-size: clamp(17px, 4.6vw, 23px); font-weight: 800; text-align: center; max-width: 620px; line-height: 1.35; min-height: 2.7em; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
   .opt.wackelt { animation: wackel .4s; }
 
   /* ---- Woerter bauen ---- */
@@ -195,13 +253,28 @@
   .ding.neu { animation: reinPlopp .35s; }
   @keyframes reinPlopp { from { transform: translateY(-24px) scale(0) } 70% { transform: scale(1.2) } }
   .mampfi-s.mampfi-gross { width: min(25vw, 170px); align-self: center; }
+  .zehner { position: relative; transition: transform .2s, box-shadow .2s; }
+  .zehner.zehn-blitz { transform: scale(1.06); box-shadow: 0 0 0 5px var(--gelb), 0 5px 0 var(--rand); }
+  .zehner.zehn-blitz::after { content: attr(data-z); position: absolute; left: -18px; top: -18px; min-width: 38px; height: 38px; padding: 0 6px; border-radius: 19px;
+    background: var(--gelb); border: 3px solid var(--gelb-d); font: 900 20px/32px system-ui, sans-serif; text-align: center; animation: huepf .5s; }
 
   /* ---- Uhr ---- */
   .uhr-szene { position: relative; width: min(84vw, 50vh, 430px); flex: none; }
   .uhr-box svg { width: 100%; height: auto; display: block; touch-action: none; overflow: visible; }
   .uhr-box .uh-minuten { opacity: 0; transition: opacity .3s; } .uhr-box.mit-minuten .uh-minuten { opacity: 1; }
   .uhr-box.stellbar svg { cursor: grab; }
-  .zeiger.aktiv line { filter: drop-shadow(0 0 6px rgba(63, 169, 214, .9)); }
+  .zeiger.aktiv > * { filter: drop-shadow(0 0 6px rgba(63, 169, 214, .9)); }
+  .uhr-szene.ohne { width: min(34vw, 20vh, 150px); } .uhr-szene.ohne .uhr-box { display: none; }
+  .uhr-szene.ohne #uhMampfi { position: static; width: 100%; }
+  .optionen.uhr-bilder { grid-template-columns: repeat(3, minmax(0, 200px)); justify-content: center; }
+  .optionen.uhr-bilder .opt { height: auto; aspect-ratio: 1; padding: 6px; }
+  @media (max-width: 560px) { .optionen.uhr-bilder { grid-template-columns: repeat(2, minmax(0, 168px)); }
+    .optionen.uhr-bilder .opt:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: min(168px, calc(50% - 6px)); } }
+  .optionen.uhr-bilder .mini-uhr { width: 100%; height: 100%; display: block; }
+  .optionen.uhr-bilder .opt.richtig { background: #dff7cf; }
+  .geschichte .digi { display: inline-block; margin: 0 12px 4px 0; padding: 4px 16px; border-radius: 14px; background: #263238; color: #7CFC9A;
+    font: 900 clamp(30px, 9vw, 44px)/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .06em; box-shadow: inset 0 0 0 3px #455a64; }
+
   .zeiger.blinkt { animation: zblink .4s 4; } @keyframes zblink { 50% { opacity: .15 } }
   #uhMampfi { position: absolute; right: -8%; bottom: -6%; width: 27%; }
   .digital { font-size: clamp(19px, 5vw, 27px); font-weight: 900; color: var(--gut-d); min-height: 1.3em; text-align: center; }
@@ -209,6 +282,12 @@
   .optionen.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .optionen.uhr-text .opt { font-size: clamp(16px, 4.4vw, 24px); font-weight: 900; padding: 8px; height: clamp(84px, 13vh, 120px); line-height: 1.2; }
   .fertig-knopf { font-size: 54px; font-weight: 900; background: var(--gelb); border-color: var(--gelb-d); box-shadow: 0 7px 0 var(--gelb-d); }
+
+  /* ---- Stufe ---- */
+  .stufe-chip { flex: none; padding: 6px 11px; border-radius: 999px; background: var(--karte); box-shadow: 0 3px 0 var(--rand); font-size: 14px; font-weight: 900; color: var(--sanft); white-space: nowrap; }
+  .stufe-chip:empty { display: none; }
+  .stufe-chip.hoch { animation: stufeHoch 1.3s; background: var(--gelb); color: var(--tinte); box-shadow: 0 3px 0 var(--gelb-d); }
+  @keyframes stufeHoch { 0% { transform: scale(1) } 20% { transform: scale(1.55) rotate(-8deg) } 40% { transform: scale(1.3) rotate(6deg) } 100% { transform: scale(1) } }
 
   /* ---- Einstellungen ---- */
   h2 { margin: 0; font-size: 28px; font-weight: 900; }
@@ -219,6 +298,16 @@
   .ein-zeile input[type=range] { flex: 1; min-width: 150px; }
   .ein-zeile small { width: 100%; color: var(--sanft); }
   .ein-zeile input[type=radio] { flex: none; width: 22px; height: 22px; margin: 0; } .ein-zeile span { flex: 1; }
+  .ein-box + .ein-box { margin-top: 2px; }
+  .hinweis.links { text-align: left; max-width: none; margin: 0 0 4px; }
+  .stufen-zeile { padding: 10px 0 8px; border-top: 2px dashed var(--rand); } .stufen-zeile:first-child { border-top: 0; }
+  .stufen-zeile > b { font-size: 17px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 6px; }
+  .chips button { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--rand); background: #fff; font-size: 18px; font-weight: 900; color: var(--sanft); }
+  .chips button.an { background: var(--blau); border-color: var(--blau-d); color: var(--tinte); }
+  .stufen-zeile small { display: block; color: var(--sanft); font-size: 14px; line-height: 1.35; }
+  .stufen-zeile .fest { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; margin-top: 8px; }
+  .stufen-zeile .fest input { width: 20px; height: 20px; margin: 0; }
 
   /* ---- Konfetti ---- */
   #konfetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; }
@@ -270,7 +359,7 @@
 
 <!-- Rechnen bis 10 mit Bildern -->
 <section id="rechnen" class="schirm weg">
-  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><span class="stufe-chip"></span><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
   <div id="reBilder" class="bilder"></div>
   <div id="reAufgabe" class="aufgabe"></div>
   <div id="reOpt" class="optionen zahlen"></div>
@@ -278,7 +367,7 @@
 
 <!-- Woerter bauen: Bild + Wort hoeren, Buchstaben in die richtige Reihenfolge tippen -->
 <section id="bauen" class="schirm weg">
-  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><span class="stufe-chip"></span><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
   <div class="szene"><div id="baMampfi" class="mampfi-s"></div><button id="baBild" class="bildkarte klein" aria-label="Wort hören"></button></div>
   <div id="baText" class="geschichte"></div>
   <div id="baFelder" class="felder"></div>
@@ -288,7 +377,7 @@
 
 <!-- Mampfi fuettern: Rechengeschichten mit Zehnerfeldern -->
 <section id="fuettern" class="schirm weg">
-  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><span class="stufe-chip"></span><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
   <div id="fuText" class="geschichte"></div>
   <div class="szene"><div id="fuMampfi" class="mampfi-s mampfi-gross"></div><div id="fuFelder" class="zehnerfelder"></div></div>
   <div id="fuAufgabe" class="aufgabe">&nbsp;</div>
@@ -297,7 +386,7 @@
 
 <!-- Uhr: Zeiger stellen oder Uhrzeit ablesen -->
 <section id="uhr" class="schirm weg">
-  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
+  <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div><span class="stufe-chip"></span><button class="rund hoeren" aria-label="Nochmal hören">🔊</button></div>
   <div id="uhText" class="geschichte"></div>
   <div class="uhr-szene"><div id="uhUhr" class="uhr-box"></div><div id="uhMampfi"></div></div>
   <div id="uhDigital" class="digital">&nbsp;</div>
@@ -308,6 +397,11 @@
 <section id="einstellungen" class="schirm weg">
   <div class="leiste"><button class="rund heim" aria-label="Zur Übersicht">🏠</button><div class="punkte"></div></div>
   <h2>Einstellungen</h2>
+  <div class="ein-box">
+    <h3>Schwierigkeit</h3>
+    <p class="hinweis links">Die Stufe steigt von selbst, wenn 3 Aufgaben hintereinander auf Anhieb klappen, und sinkt nach 2 Aufgaben hintereinander mit Fehlern. Hier lässt sie sich setzen; mit „festhalten“ bleibt sie, wo sie ist.</p>
+    <div id="einStufen"></div>
+  </div>
   <div class="ein-box">
     <h3>Stimme</h3>
     <div id="einStimmen"></div>
