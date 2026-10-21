@@ -59,7 +59,11 @@ var SCHRIFT = {
     w: [[["Z", 0, 1, .35, 2, .7, 1.25, 1.05, 2, 1.4, 1]]],
     x: [[["Z", 0, 1, .9, 2]], [["Z", .9, 1, 0, 2]]],
     y: [[["Z", 0, 1, .7, 2]], [["Z", 1.2, 1, .2, 3]]],
-    z: [[["Z", 0, 1, .9, 1, 0, 2, .9, 2]]]
+    z: [[["Z", 0, 1, .9, 1, 0, 2, .9, 2]]],
+    // ---- Umlaute (nur klein, fuer Woerter bauen) ----
+    "ä": [[["B", .5, 1.5, .5, .5, -10, -370]], [["Z", 1, 1, 1, 2]], [["P", .3, .6]], [["P", .72, .6]]],
+    "ö": [[["B", .5, 1.5, .5, .5, -90, -450]], [["P", .28, .6]], [["P", .72, .6]]],
+    "ü": [[["Z", 0, 1, 0, 1.55], ["B", .5, 1.55, .5, .45, 180, 0], ["Z", 1, 1.55, 1, 1]], [["Z", 1, 1, 1, 2]], [["P", .25, .6]], [["P", .75, .6]]]
   },
   cache: {},
 
@@ -106,6 +110,18 @@ var SCHRIFT = {
     var breite = G.breite + luecke + k.breite, rand = 0.3;
     var d = this.pfad(G, -G.x0) + this.pfad(k, G.breite + luecke - k.x0);
     return '<svg class="buchst-svg" viewBox="' + (-rand) + ' ' + (-rand) + ' ' + (breite + 2 * rand) + ' ' + (3 + 2 * rand) + '" aria-label="' + gross + ' ' + gross.toLowerCase() + '">' +
+      '<path d="' + d + '" fill="none" stroke="' + (farbe || "currentColor") + '" stroke-width="0.26" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  },
+  // Ein ganzes Wort als SVG, Zeichen nebeneinander (unbekannte Zeichen wie "-" werden als kurzer Strich gezeichnet)
+  svgWort: function (wort, farbe) {
+    var d = "", x = 0, rand = 0.3, self = this;
+    String(wort).split("").forEach(function (z, i) {
+      var f = self.form(z);
+      if (i) x += 0.38;
+      if (!f) { d += "M" + x.toFixed(3) + " 1.5h0.5"; x += 0.5; return; }
+      d += self.pfad(f, x - f.x0); x += f.breite;
+    });
+    return '<svg class="buchst-svg" viewBox="' + (-rand) + ' ' + (-rand) + ' ' + (x + 2 * rand) + ' ' + (3 + 2 * rand) + '" aria-label="' + wort + '">' +
       '<path d="' + d + '" fill="none" stroke="' + (farbe || "currentColor") + '" stroke-width="0.26" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   },
   // Einzelnes Zeichen als SVG

@@ -42,7 +42,18 @@ var WOERTER = {
       minus: function (a, b) { return "Wie viel ist " + a + " minus " + b + "?"; },
       rechnenRichtig: function (a, op, b, c) { return a + (op === "+" ? " plus " : " minus ") + b + " ist " + c + "."; },
       zaehlTipp: "Tipp die Bilder an und zähl mit.",
-      runde: "Super gemacht! Du hast einen Stern bekommen."
+      runde: "Super gemacht! Du hast einen Stern bekommen.",
+      bauen: function (art, w) { return art === "e" ? "Mampfi hat Hunger auf " + w + ". Bau das Wort!" : art === "t" ? "Mampfi wünscht sich: " + w + "! Bau das Wort!" : "Mampfi sucht: " + w + ". Bau das Wort!"; },
+      fuetternPlus: function (a, essen, helfer, b, du) { return "Mampfi hat " + a + " " + essen + ". " + helfer + (du ? " gibst ihm noch " : " bringt noch ") + b + " dazu."; },
+      fuetternMinus: function (a, essen, b) { return "Mampfi hat " + a + " " + essen + ". Er frisst " + b + "."; },
+      fuetternFragePlus: "Wie viele hat Mampfi jetzt?",
+      fuetternFrageMinus: "Wie viele bleiben übrig?",
+      uhrStellen: function (zeit, tun) { return "Um " + zeit + " " + tun + ". Stell die Uhr auf " + zeit + "!"; },
+      uhrLesen: "Mampfi fragt: Wie spät ist es?",
+      uhrRichtig: function (zeit) { return "Es ist " + zeit + "."; },
+      uhrMinuten: "Schau auf den großen Zeiger. Er zeigt die Minuten.",
+      uhrStunde: "Schau auf den kleinen Zeiger. Er zeigt die Stunde.",
+      uhrHalb: "Bei halb steht der kleine Zeiger zwischen zwei Zahlen."
     }
   },
   en: {
@@ -87,7 +98,18 @@ var WOERTER = {
       minus: function (a, b) { return "What is " + a + " minus " + b + "?"; },
       rechnenRichtig: function (a, op, b, c) { return a + (op === "+" ? " plus " : " minus ") + b + " is " + c + "."; },
       zaehlTipp: "Tap the pictures and count.",
-      runde: "Well done! You got a star."
+      runde: "Well done! You got a star.",
+      bauen: function (art, w) { return art === "e" ? "Mampfi wants to eat: " + w + "! Build the word!" : art === "t" ? "Mampfi wants: " + w + "! Build the word!" : "Mampfi is looking for: " + w + ". Build the word!"; },
+      fuetternPlus: function (a, essen, helfer, b, du) { return "Mampfi has " + a + " " + essen + ". " + helfer + (du ? " give him " : " brings him ") + b + " more."; },
+      fuetternMinus: function (a, essen, b) { return "Mampfi has " + a + " " + essen + ". He eats " + b + "."; },
+      fuetternFragePlus: "How many does Mampfi have now?",
+      fuetternFrageMinus: "How many are left?",
+      uhrStellen: function (zeit, tun) { return "At " + zeit + ", " + tun + ". Set the clock to " + zeit + "!"; },
+      uhrLesen: "Mampfi asks: What time is it?",
+      uhrRichtig: function (zeit) { return "It's " + zeit + "."; },
+      uhrMinuten: "Look at the long hand. It shows the minutes.",
+      uhrStunde: "Look at the short hand. It shows the hour.",
+      uhrHalb: "At half past, the short hand is between two numbers."
     }
   }
 };
