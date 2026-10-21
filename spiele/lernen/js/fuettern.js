@@ -51,10 +51,14 @@ var FUETTERN = {
     MAMPFI.ruhe(m, null);
 
     var name = spr === "en" ? t.essen[2] : t.essen[1];
-    var hName = spr === "en" ? t.helfer[2] : t.helfer[1], du = t.helfer[1] === "Du";
-    var satz = t.op === "+" ? W.saetze.fuetternPlus(t.a, name, hName, t.b, du) : W.saetze.fuetternMinus(t.a, name, t.b);
-    var anzeige = t.op === "+" ? W.saetze.fuetternPlus(t.a, t.essen[0], t.helfer[0] + " " + hName, t.b, du) : W.saetze.fuetternMinus(t.a, t.essen[0], t.b);
-    LERNEN.el("fuText").textContent = anzeige;
+    var hNr = this.HELFER.indexOf(t.helfer); if (t.helfer[1] === "Du") hNr = -1;
+    var satz = t.op === "+" ? ANSAGE.SAETZE.fuetternPlus(t.a, name, hNr, t.b) : ANSAGE.SAETZE.fuetternMinus(t.a, name, t.b);
+    var essenKey = ANSAGE.w(name).k;                              // in der Anzeige steht statt des Worts das Bild, vor dem Helfer sein Bild
+    LERNEN.el("fuText").textContent = ANSAGE.text(satz.map(function (p) {
+      if (p.k === essenKey) return t.essen[0] + (p.z || "");
+      if (/\|s\|(helfer\.\d|fuDu)$/.test(p.k)) return t.helfer[0] + " " + p.t;
+      return p;
+    }));
     LERNEN.el("fuAufgabe").innerHTML = "&nbsp;";
     LERNEN.el("fuOpt").innerHTML = "";
 
@@ -122,13 +126,13 @@ var FUETTERN = {
       b.onclick = function () { self.tipp(o, b); };
       ob.appendChild(b);
     });
-    LERNEN.sag(t.op === "+" ? W.saetze.fuetternFragePlus : W.saetze.fuetternFrageMinus);
+    LERNEN.sag(ANSAGE.SAETZE.fuetternFrage(t.op));
   },
   zaehle: function (d) {
     if (d.classList.contains("gefressen") || d.classList.contains("gezaehlt")) return;
     this.zaehler++;
     d.classList.add("gezaehlt"); d.setAttribute("data-n", this.zaehler);
-    TOENE.tipp(); LERNEN.sagNur(String(this.zaehler));
+    TOENE.tipp(); LERNEN.sagNur([ANSAGE.z(this.zaehler)]);
   },
   tipp: function (o, k) {
     if (!this.frei || k.disabled) return;
@@ -139,14 +143,14 @@ var FUETTERN = {
       if (this.erster) this.gut++;
       this.nr++; LERNEN.punkte(this.nr);
       LERNEN.el("fuAufgabe").innerHTML = t.a + (t.op === "+" ? " + " : " − ") + t.b + ' = <span class="loesung">' + t.c + "</span>";
-      if (Math.random() < 0.3) { MAMPFI.setze(m, "ruelpst", 900); TOENE.ruelps(); MAMPFI.blase(m, MAMPFI.spruch("ruelps"), 1500); } else MAMPFI.jubelt(m);
-      var p = LERNEN.sagNur(LERNEN.lob() + " " + W.saetze.rechnenRichtig(t.a, t.op, t.b, t.c));
+      if (Math.random() < 0.3) { MAMPFI.setze(m, "ruelpst", 900); TOENE.ruelps(); MAMPFI.blase(m, MAMPFI.spruch("ruelps").t, 1500); } else MAMPFI.jubelt(m);
+      var p = LERNEN.sagNur([LERNEN.lob(), ANSAGE.SAETZE.rechnenRichtig(t.a, t.op, t.b, t.c)]);
       LERNEN.nachAnsage(p, function () { FUETTERN.weiter(); }, 500);
     } else {
-      var hilfe = this.erster ? " " + W.saetze.zaehlTipp : "";
+      var hilfe = this.erster ? ANSAGE.SAETZE.zaehlTipp() : null;
       this.erster = false;
       k.disabled = true; k.classList.add("falsch"); MAMPFI.wundert(m);
-      LERNEN.sagNur(W.saetze.nochmal + hilfe);
+      LERNEN.sagNur([ANSAGE.SAETZE.nochmal(), hilfe]);
     }
   },
   weiter: function () { if (this.nr >= this.RUNDE) this.ende(); else this.neu(); },

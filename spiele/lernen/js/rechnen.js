@@ -67,14 +67,14 @@ var RECHNEN = {
       b.onclick = function () { self.tipp(o, b); };
       ob.appendChild(b);
     });
-    LERNEN.sag(t.op === "+" ? W.saetze.plus(t.a, t.b) : W.saetze.minus(t.a, t.b));
+    LERNEN.sag(ANSAGE.SAETZE.rechnenFrage(t.a, t.op, t.b));
   },
   zaehle: function (d) {
     if (d.classList.contains("fort")) { TOENE.weg(); return; }
     if (d.classList.contains("gezaehlt")) return;
     this.zaehler++;
     d.classList.add("gezaehlt"); d.setAttribute("data-n", this.zaehler);
-    TOENE.tipp(); LERNEN.sagNur(String(this.zaehler));
+    TOENE.tipp(); LERNEN.sagNur([ANSAGE.z(this.zaehler)]);
   },
   tipp: function (o, k) {
     if (!this.frei || k.disabled) return;
@@ -85,13 +85,13 @@ var RECHNEN = {
       if (this.erster) this.gut++;
       this.nr++; LERNEN.punkte(this.nr);
       LERNEN.el("reAufgabe").innerHTML = t.a + (t.op === "+" ? " + " : " − ") + t.b + ' = <span class="loesung">' + t.c + "</span>";
-      var p = LERNEN.sagNur(LERNEN.lob() + " " + W.saetze.rechnenRichtig(t.a, t.op, t.b, t.c));
+      var p = LERNEN.sagNur([LERNEN.lob(), ANSAGE.SAETZE.rechnenRichtig(t.a, t.op, t.b, t.c)]);
       LERNEN.nachAnsage(p, function () { RECHNEN.weiter(); }, 350);
     } else {
-      var hilfe = this.erster ? " " + W.saetze.zaehlTipp : "";
+      var hilfe = this.erster ? ANSAGE.SAETZE.zaehlTipp() : null;
       this.erster = false;
       k.disabled = true; k.classList.add("falsch"); TOENE.falsch();
-      LERNEN.sagNur(W.saetze.nochmal + hilfe);
+      LERNEN.sagNur([ANSAGE.SAETZE.nochmal(), hilfe]);
     }
   },
   weiter: function () { if (this.nr >= LERNEN.RUNDE) this.ende(); else this.neu(); },

@@ -17,16 +17,29 @@ var LERNEN = {
   W: function () { return WOERTER[this.sprache]; },
   zufall: function (a) { return a[Math.floor(Math.random() * a.length)]; },
   mische: function (a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; },
-  lob: function () { return this.zufall(this.W().saetze.lob); },
+  lob: function () { return ANSAGE.lob(); },
 
   // Zeitversetzt ausfuehren, aber nur, solange derselbe Bildschirm offen ist (sonst laufen alte Aufgaben weiter)
   spaeter: function (fn, ms) { var g = this.gen; setTimeout(function () { if (g === LERNEN.gen) fn(); }, ms || 0); },
   nachAnsage: function (p, fn, pause) { var g = this.gen; p.then(function () { setTimeout(function () { if (g === LERNEN.gen) fn(); }, pause || 300); }); },
-  sag: function (text) { this.ansage = text; return STIMME.sag(text, this.sprache); },      // Aufgabe: wird mit 🔊 wiederholt
-  sagNur: function (text) { return STIMME.sag(text, this.sprache); },                     // Lob, Hinweis
+  // Sprechen: eine Liste von Teilen (ANSAGE) oder ein Text. Sind alle Teile selbst aufgenommen, kommt die eigene Stimme, sonst die Handystimme.
+  sprich: function (x, spr) {
+    spr = spr || this.sprache;
+    if (!x) return Promise.resolve();
+    if (Array.isArray(x)) {
+      var teile = ANSAGE.satz(x);
+      if (!teile.length) return Promise.resolve();
+      if (STIMMBANK.bereit(teile)) return STIMMBANK.spiele(teile);
+      return STIMME.sag(ANSAGE.text(teile), spr);
+    }
+    return STIMME.sag(x, spr);
+  },
+  sag: function (x) { this.ansage = x; return this.sprich(x); },                       // Aufgabe: wird mit 🔊 wiederholt
+  sagNur: function (x) { return this.sprich(x); },                                     // Lob, Hinweis
 
   zeige: function (id) {
-    this.gen++; STIMME.still();
+    this.gen++; STIMME.still(); STIMMBANK.still();
+    if (typeof AUFNAHME !== "undefined" && id !== "stimme") AUFNAHME.stopp("weg");
     var s = document.querySelectorAll(".schirm");
     for (var i = 0; i < s.length; i++) s[i].classList.toggle("weg", s[i].id !== id);
     window.scrollTo(0, 0);
@@ -37,7 +50,7 @@ var LERNEN = {
     for (var k = 0; k < p.length; k++) p[k].innerHTML = h;
   },
   sterne: function () { return this.lies("sterne", { anlaut: 0, spuren: 0, rechnen: 0, bauen: 0, fuettern: 0, uhr: 0 }); },
-  einstellung: function () { return this.lies("einstellung", { sprache: "de", uhrstil: "standard" }); },
+  einstellung: function () { return this.lies("einstellung", { sprache: "de", uhrstil: "standard", name: "", eigeneStimme: true }); },
   setzeEinstellung: function (k, v) { var e = this.einstellung(); e[k] = v; this.schreib("einstellung", e); },
   belohnung: function (spiel, nochmal) {
     var st = this.sterne(); st[spiel] = (st[spiel] || 0) + 1; this.schreib("sterne", st);
@@ -46,7 +59,7 @@ var LERNEN = {
     this.el("beZahl").textContent = "⭐ " + st[spiel];
     this.el("beNochmal").onclick = function () { TOENE.tipp(); nochmal(); };
     TOENE.geschafft(); this.konfetti(46);
-    this.sag(this.W().saetze.runde);
+    this.sag(ANSAGE.SAETZE.runde());
   },
   heim: function () { TOENE.tipp(); this.zeige("hub"); this.hubAuffrischen(); },
   hubAuffrischen: function () {
@@ -62,7 +75,7 @@ var LERNEN = {
   setzeSprache: function (s) {
     if (!WOERTER[s]) return;
     this.sprache = s; this.setzeEinstellung("sprache", s);
-    TOENE.tipp(); this.hubAuffrischen(); this.sagNur(this.W().name);
+    TOENE.tipp(); this.hubAuffrischen(); this.sagNur(ANSAGE.SAETZE.sprache());
   },
 
   // Ein Bild (Emoji) fliegt von einem Element zu einem anderen, z. B. in Mampfis Mund
@@ -108,11 +121,37 @@ var LERNEN = {
     tempo.value = STIMME.TEMPO;
     tempo.oninput = function () { STIMME.TEMPO = +tempo.value; self.stimmeSpeichern(); };
     tempo.onchange = function () { self.sagNur(self.sprache === "en" ? "This is how fast I talk." : "So schnell spreche ich."); };
+    var nameFeld = this.el("einName");
+    nameFeld.value = e.name || "";
+    nameFeld.onchange = function () {
+      var neu = nameFeld.value.trim().slice(0, 20), alt = self.einstellung().name;
+      self.setzeEinstellung("name", neu);
+      if (neu !== alt && STIMMBANK.hat("name")) STIMMBANK.loeschen("name");     // alte Namensaufnahme passt nicht mehr
+      self.einstellungenZahlen();
+    };
+    var eigen = this.el("einEigen");
+    eigen.checked = e.eigeneStimme !== false;
+    eigen.onchange = function () { self.setzeEinstellung("eigeneStimme", eigen.checked); };
+    this.el("einAufnahme").onclick = function () { AUFNAHME.oeffnen(); };
+    this.einstellungenZahlen();
     var stile = document.querySelectorAll("#einstellungen [name=uhrstil]");
     for (var i = 0; i < stile.length; i++) {
       stile[i].checked = stile[i].value === e.uhrstil;
       stile[i].onchange = function () { self.setzeEinstellung("uhrstil", this.value); };
     }
+  },
+
+  einstellungenZahlen: function () {
+    var t = ["de", "en"].map(function (s) { var l = ANSAGE.katalog(s); return (s === "de" ? "Deutsch " : "Englisch ") + l.filter(function (x) { return STIMMBANK.hat(x.k); }).length + " von " + l.length; });
+    this.el("einAufnahmeStand").textContent = STIMMBANK.db ? "Aufgenommen: " + t.join(" · ") : "Dieser Browser erlaubt keinen Speicher für Aufnahmen.";
+  },
+  // Begruessung mit Namen, einmal je Besuch beim ersten Antippen der Startseite
+  begruessen: function () {
+    var s = ANSAGE.SAETZE.hallo(), m = this.el("hubMampfi");
+    if (this.begruesst || !s || this.el("hub").classList.contains("weg")) return;
+    this.begruesst = true;
+    MAMPFI.setze(m, "freut", 1200); MAMPFI.blase(m, ANSAGE.text(s), 2200);
+    this.sagNur(s);
   },
 
   // Konfetti aus bunten Schnipseln und Sternen; um ein Element herum oder ueber den ganzen Schirm
@@ -135,6 +174,7 @@ var LERNEN = {
   init: function () {
     this.sprache = this.lies("einstellung", { sprache: "de" }).sprache === "en" ? "en" : "de";
     this.stimmeLaden();
+    STIMMBANK.init().then(function () { AUFNAHME.init(); });
     STIMME.aufGeladen = function () { LERNEN.hubAuffrischen(); if (!LERNEN.el("einstellungen").classList.contains("weg")) LERNEN.einstellungen(); };
     STIMME.init();
     document.addEventListener("pointerdown", function () { TOENE.start(); }, true);
@@ -150,7 +190,8 @@ var LERNEN = {
     this.el("kUhr").onclick = function () { TOENE.tipp(); UHR.start(); };
     this.el("kEinst").onclick = function () { self.einstellungen(); };
     var hm = MAMPFI.einsetzen(this.el("hubMampfi"));
-    hm.onclick = function () { MAMPFI.kitzeln(hm); };
+    hm.onclick = function (e) { e.stopPropagation(); if (!self.begruesst && ANSAGE.SAETZE.hallo()) { self.begruessen(); return; } MAMPFI.kitzeln(hm); };
+    this.el("hub").addEventListener("pointerup", function () { setTimeout(function () { self.begruessen(); }, 30); });
     MAMPFI.einsetzen(this.el("fuMini"));
     var heim = document.querySelectorAll(".heim");
     for (var h = 0; h < heim.length; h++) heim[h].onclick = function () { self.heim(); };

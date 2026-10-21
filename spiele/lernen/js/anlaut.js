@@ -10,7 +10,7 @@ var ANLAUT = {
   start: function () {
     this.nr = 0; this.gut = 0;
     LERNEN.zeige("anlaut"); LERNEN.punkte(0);
-    LERNEN.el("anBild").onclick = function () { TOENE.tipp(); if (ANLAUT.a) LERNEN.sagNur(ANLAUT.a.wort); };
+    LERNEN.el("anBild").onclick = function () { TOENE.tipp(); if (ANLAUT.a) LERNEN.sagNur([ANSAGE.w(ANLAUT.a.wort)]); };
     this.neu();
   },
   neu: function () {
@@ -38,7 +38,7 @@ var ANLAUT = {
       k.onclick = function () { ANLAUT.tipp(o, k); };
       box.appendChild(k);
     });
-    LERNEN.sag(W.saetze.anlautFrage(w[0]));
+    LERNEN.sag(ANSAGE.SAETZE.anlautFrage(w[0]));
   },
   tipp: function (o, k) {
     if (!this.frei || k.disabled) return;
@@ -49,12 +49,12 @@ var ANLAUT = {
       if (this.erster) this.gut++;
       this.nr++; LERNEN.punkte(this.nr);
       LERNEN.el("anWort").innerHTML = '<span class="erster">' + a.wort.charAt(0) + "</span>" + a.wort.slice(1);
-      var p = LERNEN.sagNur(LERNEN.lob() + " " + W.saetze.anlautRichtig(a.wort, W.namen[a.b]));
+      var p = LERNEN.sagNur([LERNEN.lob(), ANSAGE.SAETZE.anlautRichtig(a.wort, a.b)]);
       LERNEN.nachAnsage(p, function () { ANLAUT.weiter(); }, 350);
     } else {
       this.erster = false;
       k.disabled = true; k.classList.add("falsch"); TOENE.falsch();
-      LERNEN.sagNur(W.saetze.nochmal + " " + a.wort);
+      LERNEN.sagNur(ANSAGE.SAETZE.nochmalWort(a.wort));
     }
   },
   weiter: function () { if (this.nr >= LERNEN.RUNDE) this.ende(); else this.neu(); },

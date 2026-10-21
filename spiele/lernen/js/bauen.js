@@ -56,7 +56,7 @@ var BAUEN = {
     LERNEN.zeige("bauen"); LERNEN.punkte(0);
     var m = LERNEN.el("baMampfi");
     if (!m.querySelector("svg")) { MAMPFI.einsetzen(m); m.onclick = function () { MAMPFI.kitzeln(m); }; }
-    LERNEN.el("baBild").onclick = function () { TOENE.tipp(); if (BAUEN.a) LERNEN.sagNur(BAUEN.a.wort); };
+    LERNEN.el("baBild").onclick = function () { TOENE.tipp(); if (BAUEN.a) LERNEN.sagNur(BAUEN.wortTeil()); };
     this.neu();
   },
   neu: function () {
@@ -64,14 +64,15 @@ var BAUEN = {
     var gruppe = stufe >= 6 ? g[2].concat(g[3], g[4]) : (Math.random() < 0.7 || stufe === 1 ? g[stufe - 1] : g[Math.floor(Math.random() * (stufe - 1))]);
     var self = this, kand = gruppe.filter(function (k) { return self.zuletzt.indexOf(k.wort) < 0; });
     if (!kand.length) kand = gruppe;
-    var k = LERNEN.zufall(kand);
+    var k = LERNEN.zufall(kand), nm = LERNEN.einstellung().name;
+    if (nm && stufe >= 2 && Math.random() < 0.15 && this.zuletzt.indexOf(nm) < 0 && this.nameGeht(nm)) k = { bild: "🧒", wort: nm, art: "n", name: true };
     this.zuletzt.push(k.wort); if (this.zuletzt.length > 10) this.zuletzt.shift();
     this.a = k; this.pos = 0; this.fehler = 0; this.erster = true; this.frei = true; this.tastatur = stufe >= 6;
 
     LERNEN.el("baBild").textContent = k.bild;
     LERNEN.el("baBild").classList.remove("weg-geflogen");
-    var text = W.saetze.bauen(k.art, k.wort);
-    LERNEN.el("baText").textContent = W.saetze.bauen(k.art, k.bild);
+    var text = k.name ? ANSAGE.SAETZE.bauenName() : ANSAGE.SAETZE.bauen(k.art, k.wort), wk = ANSAGE.w(k.wort).k;
+    LERNEN.el("baText").textContent = (k.name ? "🧒 " : "") + ANSAGE.text(text.map(function (p) { return p.k === wk ? k.bild + (p.z || "") : p; }));
     LERNEN.el("baUebers").innerHTML = "&nbsp;";
     // Felder
     var felder = LERNEN.el("baFelder"), n = k.wort.length;
@@ -120,7 +121,7 @@ var BAUEN = {
       if (this.fehler >= 2) {                                        // Hilfe: das passende Kaertchen leuchtet
         var ziel = this.tastatur ? soll.toLowerCase() : soll, k = LERNEN.el("baKarten").querySelectorAll(".karte-b");
         for (var i = 0; i < k.length; i++) if (k[i].getAttribute("data-z") === ziel && !k[i].classList.contains("benutzt")) { k[i].classList.add("tipp"); break; }
-        LERNEN.sagNur(this.a.wort);
+        LERNEN.sagNur(this.wortTeil());
       }
     }
   },
@@ -131,17 +132,19 @@ var BAUEN = {
     LERNEN.el("baFelder").classList.add("geschafft");
     setTimeout(function () { LERNEN.el("baFelder").classList.remove("geschafft"); }, 900);
     TOENE.richtig();
-    var anders = a[andereSpr];
+    var anders = a.name ? null : a[andereSpr];
     LERNEN.el("baUebers").innerHTML = anders ? '<button class="uebers" data-spr="' + andereSpr + '">' + (andereSpr === "en" ? "🇬🇧 " : "🇩🇪 ") + anders + " 🔊</button>" : "&nbsp;";
     var ub = LERNEN.el("baUebers").querySelector(".uebers");
-    if (ub) ub.onclick = function () { TOENE.tipp(); STIMME.sag(anders, andereSpr); };
+    if (ub) ub.onclick = function () { TOENE.tipp(); LERNEN.sprich([ANSAGE.w(anders, andereSpr)], andereSpr); };
     if (a.art === "e") {
       LERNEN.fliege(bild, m, 650, function () { bild.classList.add("weg-geflogen"); MAMPFI.frisst(m, Math.random() < 0.35); });
     } else { MAMPFI.jubelt(m); LERNEN.konfetti(18, bild); }
-    var p = LERNEN.sagNur(LERNEN.lob() + " " + a.wort + ".");
+    var p = LERNEN.sagNur([LERNEN.lob(), ANSAGE.ende(this.wortTeil(), ".")]);
     LERNEN.nachAnsage(p, function () { BAUEN.weiter(); }, 1300);
   },
   weiter: function () { if (this.nr >= this.RUNDE) this.ende(); else this.neu(); },
+  wortTeil: function () { return this.a.name ? [ANSAGE.name()] : [ANSAGE.w(this.a.wort)]; },
+  nameGeht: function (nm) { return nm.length >= 2 && nm.length <= 10 && nm.split("").every(function (z) { return !!SCHRIFT.Z[z]; }); },
   ende: function () {
     var st = this.stand();
     if (this.gut >= 4 && st.stufe < this.MAX) st.stufe++;
