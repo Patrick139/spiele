@@ -109,5 +109,10 @@ var TOENE = {
     } catch (e) {}
   },
   hae: function () { this.ton(300, 0.12, "triangle", 0.12, 420); this.ton(420, 0.18, "triangle", 0.1, 300, 0.13); },
+  kichern: function () { for (var i = 0; i < 4; i++) this.ton(950 + i * 70, 0.07, "sine", 0.07, 1150 + i * 70, i * 0.09); },
+  gaehn: function () { this.ton(430, 1.0, "sine", 0.07, 190); this.rauschen(0.9, 0.06, 500, 0.05, 0.7); },
+  hatschi: function () { this.ton(480, 0.3, "sine", 0.05, 950); this.rauschen(0.2, 0.45, 2600, 0.32, 0.8); },
+  schreck: function () { this.ton(520, 0.16, "square", 0.04, 1300); },
+  stufe: function () { var self = this; [659, 784, 988, 1318].forEach(function (f, i) { self.ton(f, 0.16, "sine", 0.13, null, i * 0.08); }); },
   geschafft: function () { var self = this; [523, 659, 784, 1046].forEach(function (f, i) { self.ton(f, 0.26, "triangle", 0.16, null, i * 0.12); }); this.ton(1318, 0.6, "sine", 0.12, null, 0.5); }
 };

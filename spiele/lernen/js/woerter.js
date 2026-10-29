@@ -53,7 +53,22 @@ var WOERTER = {
       uhrRichtig: function (zeit) { return "Es ist " + zeit + "."; },
       uhrMinuten: "Schau auf den großen Zeiger. Er zeigt die Minuten.",
       uhrStunde: "Schau auf den kleinen Zeiger. Er zeigt die Stunde.",
-      uhrHalb: "Bei halb steht der kleine Zeiger zwischen zwei Zahlen."
+      uhrHalb: "Bei halb steht der kleine Zeiger zwischen zwei Zahlen.",
+      uhrWelche: function (zeit) { return "Welche Uhr zeigt " + zeit + "?"; },
+      uhrDigital: "Stell die Zeiger so, wie es auf der Digitaluhr steht.",
+      uhrDigitalRichtig: function (digi, zeit) { return digi.charAt(0).toUpperCase() + digi.slice(1) + " ist " + zeit + "."; },
+      uhrSpaeter: function (jetzt, dauer, tun) { return "Jetzt ist es " + jetzt + ". In " + dauer + " " + tun + ". Wann ist das? Stell die Uhr!"; },
+      uhrFrueher: function (jetzt, dauer) { return "Jetzt ist es " + jetzt + ". Wie spät war es vor " + dauer + "? Stell die Uhr!"; },
+      uhrDauer: { 5: "fünf Minuten", 10: "zehn Minuten", 15: "einer Viertelstunde", 20: "zwanzig Minuten", 30: "einer halben Stunde", 45: "einer Dreiviertelstunde", 60: "einer Stunde", 120: "zwei Stunden" },
+      uhrSpanne: {
+        5: "Von einer Zahl zur nächsten sind es fünf Minuten für den großen Zeiger.", 10: "Von einer Zahl zur nächsten sind es fünf Minuten für den großen Zeiger.",
+        20: "Von einer Zahl zur nächsten sind es fünf Minuten für den großen Zeiger.", 15: "Eine Viertelstunde: Der große Zeiger wandert eine Viertelrunde.",
+        30: "Eine halbe Stunde: Der große Zeiger wandert eine halbe Runde.", 45: "Eine Dreiviertelstunde: Der große Zeiger wandert drei Viertel der Runde.",
+        60: "Eine Stunde: Der kleine Zeiger wandert eine Zahl, der große einmal ganz herum.", 120: "Zwei Stunden: Der kleine Zeiger wandert zwei Zahlen."
+      },
+      fuetternMinusEtwas: function (a, essen) { return "Mampfi hat " + a + " " + essen + ". Er frisst ein paar davon."; },
+      fuetternFrageGefressen: function (c) { return "Jetzt sind noch " + c + " da. Wie viele hat Mampfi gefressen?"; },
+      stufeHoch: "Super! Jetzt wird es ein bisschen schwieriger."
     }
   },
   en: {
@@ -109,7 +124,22 @@ var WOERTER = {
       uhrRichtig: function (zeit) { return "It's " + zeit + "."; },
       uhrMinuten: "Look at the long hand. It shows the minutes.",
       uhrStunde: "Look at the short hand. It shows the hour.",
-      uhrHalb: "At half past, the short hand is between two numbers."
+      uhrHalb: "At half past, the short hand is between two numbers.",
+      uhrWelche: function (zeit) { return "Which clock shows " + zeit + "?"; },
+      uhrDigital: "Set the hands to the time on the digital clock.",
+      uhrDigitalRichtig: function (digi, zeit) { return digi.charAt(0).toUpperCase() + digi.slice(1) + " is " + zeit + "."; },
+      uhrSpaeter: function (jetzt, dauer, tun) { return "It's " + jetzt + " now. In " + dauer + ", " + tun + ". What time is that? Set the clock!"; },
+      uhrFrueher: function (jetzt, dauer) { return "It's " + jetzt + " now. What time was it " + dauer + " ago? Set the clock!"; },
+      uhrDauer: { 5: "five minutes", 10: "ten minutes", 15: "a quarter of an hour", 20: "twenty minutes", 30: "half an hour", 45: "three quarters of an hour", 60: "an hour", 120: "two hours" },
+      uhrSpanne: {
+        5: "From one number to the next is five minutes for the long hand.", 10: "From one number to the next is five minutes for the long hand.",
+        20: "From one number to the next is five minutes for the long hand.", 15: "A quarter of an hour: the long hand goes a quarter of the way round.",
+        30: "Half an hour: the long hand goes half way round.", 45: "Three quarters of an hour: the long hand goes three quarters of the way round.",
+        60: "One hour: the short hand moves one number, the long hand goes all the way round.", 120: "Two hours: the short hand moves two numbers."
+      },
+      fuetternMinusEtwas: function (a, essen) { return "Mampfi has " + a + " " + essen + ". He eats some of them."; },
+      fuetternFrageGefressen: function (c) { return "Now there are " + c + " left. How many did Mampfi eat?"; },
+      stufeHoch: "Great! Now it gets a little harder."
     }
   }
 };
