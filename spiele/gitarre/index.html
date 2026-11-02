@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gitarre – Griffbrett, Noten, Akkorde</title>
+<!--
+  Gitarre: Ueben fuer (Wieder-)Einsteiger. Drei Uebungen:
+    Griffbrett  "Wo liegt das G auf der A-Saite?" (antippen) und "Welcher Ton ist das?" (Name waehlen)
+    Noten       Note im Violinschluessel mit 8 (Gitarre klingt eine Oktave tiefer als notiert) -> eine passende Stelle antippen
+    Akkorde     Name -> Griffbild, Griffbild -> Name; mit angeschlossener Gitarre auch "Spiel G"
+  Antworten per Tippen oder mit der echten Gitarre (Mikrofon oder Audio-Interface): Einzeltoene per YIN-Tonhoehenerkennung,
+  Akkorde ueber die Verteilung der Energie auf die zwoelf Tonklassen. Dazu ein Stimmgeraet. Der Ton bleibt im Browser.
+  Stufen je Uebung (1-4), steigt nach 5 Aufgaben hintereinander auf Anhieb richtig; oben auch frei waehlbar.
+  Deutsche Tonnamen (H statt B). Keine externen Dateien ausser ../../zurueck.js.
+-->
+<style>
+  :root { --papier: #f5eedf; --karte: #fffaf0; --tinte: #2e261d; --sanft: #76685a; --rand: #e2d4ba; --akzent: #c4572a; --akzent2: #e8935f;
+    --gut: #3f9c55; --schlecht: #cf4436; --gelb: #f3c13a; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--papier); color: var(--tinte); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #wrap { max-width: 900px; margin: 0 auto; padding: 12px 12px 64px; }
+  header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 25px; }
+  h1 small { font-size: 14px; color: var(--sanft); font-weight: 600; }
+  @media (max-width: 599px) { h1 small { display: none; } h1 { font-size: 22px; } }
+  .knopf { border: 2px solid var(--rand); background: var(--karte); color: var(--tinte); border-radius: 12px; padding: 8px 13px; font: inherit; font-size: 15px;
+    font-weight: 700; cursor: pointer; box-shadow: 0 2px 0 var(--rand); }
+  .knopf:active { transform: translateY(1px); }
+  .knopf.an { background: var(--akzent); border-color: var(--akzent); color: #fff; box-shadow: none; }
+  #gitKnopf { margin-left: auto; }
+  #gitKnopf.hoert { background: var(--gut); border-color: var(--gut); color: #fff; }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 8px; }
+  .stufen { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--sanft); font-size: 14px; }
+  .stufen button { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--rand); background: var(--karte); font: inherit; font-weight: 800;
+    color: var(--sanft); cursor: pointer; }
+  .stufen button.an { background: var(--akzent2); border-color: var(--akzent); color: #fff; }
+  .karte { background: var(--karte); border-radius: 16px; box-shadow: 0 3px 0 var(--rand); padding: 12px 14px; }
+
+  /* Gitarre anschliessen, Stimmgeraet */
+  #gitPanel { margin: 10px 0; }
+  #gitPanel .zeile { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #gitPanel select { flex: 1; min-width: 200px; font: inherit; padding: 7px; border-radius: 10px; border: 2px solid var(--rand); background: #fff; color: var(--tinte); }
+  #pegel { height: 8px; border-radius: 4px; background: #eadfca; overflow: hidden; margin: 10px 0 6px; }
+  #pegel i { display: block; height: 100%; width: 0; background: var(--gut); transition: width .06s; }
+  #stimm { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  #stimmTon { font-size: 34px; font-weight: 900; min-width: 70px; text-align: center; }
+  #stimmInfo { color: var(--sanft); font-size: 14px; min-width: 150px; }
+  .skala { position: relative; flex: 1; min-width: 180px; height: 26px; border-radius: 13px; background: linear-gradient(90deg, #f2c9bd, #e9f3dd 40%, #cfeac4 50%, #e9f3dd 60%, #f2c9bd); }
+  .skala::after { content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 2px; background: var(--gut); }
+  #nadel { position: absolute; top: -3px; width: 4px; height: 32px; border-radius: 2px; background: var(--tinte); left: 50%; margin-left: -2px; transition: left .08s; opacity: .25; }
+  #gitPanel .hinweis { color: var(--sanft); font-size: 13.5px; line-height: 1.45; margin: 10px 0 0; }
+
+  /* Aufgabe */
+  #aufgabe { font-size: 21px; font-weight: 800; text-align: center; margin: 14px 0 4px; min-height: 1.4em; }
+  #aufgabe .neben { display: block; font-size: 14px; font-weight: 600; color: var(--sanft); margin-top: 4px; }
+  #bild { display: flex; justify-content: center; }
+  #bild:empty { display: none; }
+  #bild > svg { width: 100%; max-width: 440px; height: auto; display: block; }
+  @media (max-width: 599px) { #bild > svg { max-width: 300px; } }
+  #bild > svg.griff { max-width: 210px; }
+  #brettBox { margin-top: 8px; }
+  #brett { width: 100%; height: auto; display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  #brett .zelle { fill: transparent; cursor: pointer; }
+  #brett .zelle:hover { fill: rgba(255, 255, 255, .07); }
+  #brett .saite.an { stroke: #ffb347; }
+  #brett .punkt { pointer-events: none; }
+  #brett .punkt circle { fill: var(--akzent2); stroke: #fff; stroke-width: 2; }
+  #brett .punkt text { fill: #fff; font-weight: 800; font-size: 13px; }
+  #brett .punkt.ziel circle { fill: var(--gelb); } #brett .punkt.ziel text { fill: var(--tinte); }
+  #brett .punkt.gut circle { fill: var(--gut); }
+  #brett .punkt.schlecht circle { fill: var(--schlecht); }
+  #wahl { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 12px 0 6px; }
+  #wahl:empty { display: none; }
+  #wahl .ton { min-width: 56px; height: 52px; font-size: 20px; }
+  #wahl .ton.lang { min-width: 96px; font-size: 17px; }
+  #wahl .name { min-width: 86px; height: 58px; font-size: 22px; }
+  #wahl .akk { padding: 6px 6px 2px; width: min(31%, 170px); }
+  #wahl .akk svg { width: 100%; height: auto; display: block; }
+  .knopf.richtig { background: var(--gut); border-color: var(--gut); color: #fff; }
+  .knopf.akk.richtig { background: #e6f4df; color: var(--tinte); box-shadow: 0 0 0 3px var(--gut); }
+  .knopf.akk.falsch { background: #f9e0dc; color: var(--tinte); box-shadow: 0 0 0 3px var(--schlecht); opacity: 1; }
+  .knopf.falsch { background: var(--schlecht); border-color: var(--schlecht); color: #fff; opacity: .8; }
+  #rueck { text-align: center; min-height: 2.6em; font-size: 17px; margin: 6px 0; line-height: 1.35; }
+  #rueck.gut b { color: var(--gut); } #rueck.schlecht b { color: var(--schlecht); }
+  #statistik, #hilfe { text-align: center; color: var(--sanft); font-size: 13.5px; line-height: 1.5; margin-top: 6px; }
+  #toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); background: var(--akzent); color: #fff; font-weight: 800; padding: 10px 18px;
+    border-radius: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 50; }
+  #toast.zeigen { opacity: 1; }
+  .weg { display: none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <h1>🎸 Gitarre <small>Griffbrett · Noten · Akkorde</small></h1>
+    <button class="knopf" id="gitKnopf">🎸 Gitarre anschließen</button>
+  </header>
+
+  <section id="gitPanel" class="karte weg">
+    <div class="zeile">
+      <select id="gitQuelle" aria-label="Eingang"><option value="">Standard-Eingang</option></select>
+      <button class="knopf" id="gitVerbinden">Verbinden</button>
+      <button class="knopf weg" id="gitTrennen">Trennen</button>
+    </div>
+    <div id="pegel"><i></i></div>
+    <div id="stimm">
+      <div id="stimmTon">–</div>
+      <div class="skala"><i id="nadel"></i></div>
+      <div id="stimmInfo">Stimmgerät: einen Ton spielen</div>
+    </div>
+    <p class="hinweis">E-Gitarre am Scarlett Solo: Kabel in den Instrument-Eingang (Klinke), dort INST einschalten, oben den Scarlett wählen.
+      Das Spiel nimmt von selbst den lauteren der beiden Kanäle. „Direct Monitor“ am Scarlett schickt die Gitarre direkt auf die Lautsprecher.
+      Ohne Interface geht auch das Mikrofon des Geräts (Akustikgitarre oder Verstärker). Der Ton bleibt im Browser, nichts wird aufgenommen oder gesendet.</p>
+  </section>
+
+  <nav id="modi">
+    <button class="knopf an" data-modus="griff">Griffbrett</button>
+    <button class="knopf" data-modus="noten">Noten</button>
+    <button class="knopf" data-modus="akk">Akkorde</button>
+  </nav>
+  <div class="stufen"><span>Stufe</span><span id="stufenKnoepfe"></span><span id="stufenText"></span></div>
+
+  <div id="aufgabe"></div>
+  <div id="bild"></div>
+  <div id="brettBox"><svg id="brett" aria-label="Griffbrett"></svg></div>
+  <div id="wahl"></div>
+  <div id="rueck"></div>
+  <div id="statistik"></div>
+  <div id="hilfe"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function () {
+"use strict";
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, a, txt) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; }
+const zufall = l => l[Math.floor(Math.random() * l.length)];
+function mische(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+// ================= Musik =================
+const STIMMUNG = [40, 45, 50, 55, 59, 64];                         // E2 A2 D3 G3 H3 E4 (MIDI), tiefe Saite zuerst
+const SAITE = ["E", "A", "D", "G", "H", "e"];
+const SAITE_TEXT = ["tiefen E-Saite", "A-Saite", "D-Saite", "G-Saite", "H-Saite", "hohen e-Saite"];
+const NAT = { 0: "C", 2: "D", 4: "E", 5: "F", 7: "G", 9: "A", 11: "H" };
+const KREUZ = { 1: "Cis", 3: "Dis", 6: "Fis", 8: "Gis", 10: "Ais" }, BE = { 1: "Des", 3: "Es", 6: "Ges", 8: "As", 10: "B" };
+const NATUR = [0, 2, 4, 5, 7, 9, 11];
+const pcVon = m => ((m % 12) + 12) % 12;
+// art: "k" Kreuz, "b" Be, "beide" Cis/Des
+function tonName(m, art) { const pc = pcVon(m); if (pc in NAT) return NAT[pc]; return art === "b" ? BE[pc] : art === "beide" ? KREUZ[pc] + "/" + BE[pc] : KREUZ[pc]; }
+// klingende Hoehe in deutscher Schreibweise: E (grosse Oktave), e, e′, e″
+function hoehe(m) { const n = tonName(m, "k"), o = Math.floor(m / 12) - 1; return o <= 2 ? n : n.toLowerCase() + ["", "′", "″", "‴"][Math.min(3, o - 3)]; }
+function lagen(m, bis) { const r = []; for (let s = 0; s < 6; s++) { const f = m - STIMMUNG[s]; if (f >= 0 && f <= bis) r.push({ s: s, f: f }); } return r; }
+
+// Akkorde: g = Bund je Saite (tief E bis hoch e, x = nicht anschlagen), f = Finger, b = Barré [Bund, von Saite, bis Saite]
+const AKK = {
+  "C":   { g: "x32010", f: "x32010", n: "C-Dur" },
+  "G":   { g: "320003", f: "210003", n: "G-Dur" },
+  "D":   { g: "xx0232", f: "xx0132", n: "D-Dur" },
+  "A":   { g: "x02220", f: "x01230", n: "A-Dur" },
+  "E":   { g: "022100", f: "023100", n: "E-Dur" },
+  "Am":  { g: "x02210", f: "x02310", n: "a-Moll" },
+  "Em":  { g: "022000", f: "023000", n: "e-Moll" },
+  "Dm":  { g: "xx0231", f: "xx0231", n: "d-Moll" },
+  "E5":  { g: "022xxx", f: "012xxx", n: "E-Powerchord" },
+  "A5":  { g: "x022xx", f: "x012xx", n: "A-Powerchord" },
+  "G5":  { g: "355xxx", f: "134xxx", n: "G-Powerchord" },
+  "C5":  { g: "x355xx", f: "x134xx", n: "C-Powerchord" },
+  "D5":  { g: "x577xx", f: "x134xx", n: "D-Powerchord" },
+  "E7":  { g: "020100", f: "020100", n: "E-Dur-Septakkord" },
+  "A7":  { g: "x02020", f: "x02030", n: "A-Dur-Septakkord" },
+  "D7":  { g: "xx0212", f: "xx0213", n: "D-Dur-Septakkord" },
+  "G7":  { g: "320001", f: "320001", n: "G-Dur-Septakkord" },
+  "H7":  { g: "x21202", f: "x21304", n: "H-Dur-Septakkord" },
+  "F":   { g: "133211", f: "134211", n: "F-Dur (Barré)", b: [1, 0, 5] },
+  "Fm":  { g: "133111", f: "134111", n: "f-Moll (Barré)", b: [1, 0, 5] },
+  "F♯m": { g: "244222", f: "134111", n: "fis-Moll (Barré)", b: [2, 0, 5] },
+  "Hm":  { g: "x24432", f: "x13421", n: "h-Moll (Barré)", b: [2, 1, 5] },
+  "H":   { g: "x24442", f: "x13331", n: "H-Dur (Barré)", b: [2, 1, 5] },
+  "Cm":  { g: "x35543", f: "x13421", n: "c-Moll (Barré)", b: [3, 1, 5] }
+};
+function akkToene(name) { const r = []; AKK[name].g.split("").forEach((c, s) => { if (c !== "x") { const pc = pcVon(STIMMUNG[s] + (+c)); if (r.indexOf(pc) < 0) r.push(pc); } }); return r; }
+
+// ================= Stufen =================
+const ALLE6 = [0, 1, 2, 3, 4, 5];
+const AKK1 = ["C", "G", "D", "A", "E"], AKK2 = AKK1.concat(["Am", "Em", "Dm"]), AKK3 = AKK2.concat(["E5", "A5", "G5", "C5", "D5", "E7", "A7", "D7", "G7", "H7"]);
+const STUFEN = {
+  griff: [
+    { t: "tiefe E- und A-Saite, Bund 0 bis 5", saiten: [0, 1], bis: 5, vz: false },
+    { t: "tiefe E- und A-Saite bis Bund 12", saiten: [0, 1], bis: 12, vz: false },
+    { t: "alle Saiten, Bund 0 bis 5", saiten: ALLE6, bis: 5, vz: false },
+    { t: "alle Saiten bis Bund 12, mit ♯ und ♭", saiten: ALLE6, bis: 12, vz: true }],
+  noten: [
+    { t: "Noten im System, erste Lage", lo: 52, hi: 65, bis: 5, vz: false },
+    { t: "mit Hilfslinien bis zur tiefen A-Saite", lo: 45, hi: 69, bis: 5, vz: false },
+    { t: "vom tiefen E bis zum 8. Bund der e-Saite", lo: 40, hi: 72, bis: 8, vz: false },
+    { t: "mit ♯ und ♭, bis Bund 12", lo: 40, hi: 76, bis: 12, vz: true }],
+  akk: [
+    { t: "offene Dur-Akkorde: C G D A E", l: AKK1 },
+    { t: "dazu Moll: Am Em Dm", l: AKK2 },
+    { t: "dazu Powerchords (E5 A5 G5 C5 D5) und Septakkorde", l: AKK3 },
+    { t: "dazu Barré: F Fm F♯m Hm H Cm", l: AKK3.concat(["F", "Fm", "F♯m", "Hm", "H", "Cm"]) }]
+};
+const HILFE = {
+  griff: "Wo liegt …? Auf der hervorgehobenen Saite den Bund antippen (oder spielen). Welcher Ton ist das? Den Namen wählen (oder spielen).",
+  noten: "Gitarrennoten klingen eine Oktave tiefer als notiert (die kleine 8 unter dem Schlüssel). Jede Stelle mit dem richtigen Ton zählt.",
+  akk: "× = Saite nicht anschlagen, ○ = leere Saite, Zahlen = Finger (1 Zeigefinger … 4 kleiner Finger), Balken = Barré."
+};
+
+// ================= Zustand =================
+const Z = { modus: "griff", aufg: null, frei: false, erster: true, wdh: false, gen: 0, wiederhole: null, gefragt: 0, anhieb: 0,
+  git: false, G: null, brettBis: 5, stummBis: 0 };
+function lies(k, std) { try { const v = JSON.parse(localStorage.getItem("gitarre_" + k)); return v == null ? std : v; } catch (e) { return std; } }
+function schreib(k, v) { try { localStorage.setItem("gitarre_" + k, JSON.stringify(v)); } catch (e) {} }
+const stufe = () => Math.min(4, Math.max(1, +lies("stufe_" + Z.modus, 1) || 1));
+const S = () => STUFEN[Z.modus][stufe() - 1];
+
+// ================= Klang (gezupfte Saite, Karplus-Strong) =================
+let AC = null;
+function ac() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  if (AC && AC.state === "suspended") AC.resume().catch(() => {});
+  return AC;
+}
+const PUFFER = {};
+function saitenPuffer(m) {
+  if (PUFFER[m]) return PUFFER[m];
+  const a = ac(), sr = a.sampleRate, f = 440 * Math.pow(2, (m - 69) / 12), N = Math.max(2, Math.round(sr / f - 0.5)), len = Math.round(sr * 1.8);
+  const buf = a.createBuffer(1, len, sr), d = buf.getChannelData(0), z = new Float32Array(N);
+  for (let i = 0; i < N; i++) z[i] = Math.random() * 2 - 1;
+  const daempf = 0.996 - Math.max(0, m - 52) * 0.00018;
+  let i0 = 0, max = 0;
+  for (let i = 0; i < len; i++) { const i1 = (i0 + 1) % N, v = z[i0]; d[i] = v; z[i0] = daempf * 0.5 * (v + z[i1]); i0 = i1; if (Math.abs(v) > max) max = Math.abs(v); }
+  for (let i = 0; i < len; i++) d[i] = d[i] / (max || 1) * (i < 80 ? i / 80 : 1);
+  return (PUFFER[m] = buf);
+}
+function zupfe(m, wann, laut) {
+  const a = ac(); if (!a) return;
+  const q = a.createBufferSource(), g = a.createGain(), t = a.currentTime + (wann || 0);
+  q.buffer = saitenPuffer(m); g.gain.value = laut || 0.32; q.connect(g); g.connect(a.destination); q.start(t);
+  Z.stummBis = Math.max(Z.stummBis, t + 1.3);            // eigene Klaenge nicht als gespielten Ton werten (Mikrofon)
+}
+function schlage(name) { let i = 0; AKK[name].g.split("").forEach((c, s) => { if (c !== "x") zupfe(STIMMUNG[s] + (+c), 0.035 * i++, 0.2); }); }
+function ton(f, dauer, typ, laut, wann) {
+  const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + (wann || 0);
+  o.type = typ; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(laut, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dauer);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dauer + 0.05);
+  Z.stummBis = Math.max(Z.stummBis, t + dauer + 0.2);
+}
+const klangGut = () => { ton(880, 0.14, "sine", 0.12); ton(1320, 0.2, "sine", 0.1, 0.09); };
+const klangSchlecht = () => ton(150, 0.28, "triangle", 0.14);
+
+// ================= Griffbrett =================
+// u = Laenge entlang des Halses (0 = Sattel), v = quer ueber die Saiten. Hochkant am Handy senkrecht (tiefe E-Saite links, wie im Akkordbild),
+// sonst waagrecht (hohe e-Saite oben, wie in Tabulaturen).
+function geometrie(bis) {
+  const hoch = window.matchMedia("(max-width: 599px) and (orientation: portrait)").matches;
+  if (hoch) {
+    const W = 340, links = 50, sg = (W - links - 30) / 5, offen = 44, oben = 26, bw = bis <= 5 ? 56 : bis <= 8 ? 44 : 36;
+    return { hoch: true, W: W, H: oben + offen + bis * bw + 10, sg: sg, offen: offen, bw: bw, xy: (u, v) => [links + v, oben + offen + u], v: s => s * sg,
+      nr: f => [14, oben + offen + (f - 0.5) * bw + 5], sn: s => [links + s * sg, 17] };
+  }
+  const W = 820, links = 40, sg = 30, offen = 46, oben = 16, bw = (W - links - offen - 12) / bis;
+  return { hoch: false, W: W, H: oben + 5 * sg + 44, sg: sg, offen: offen, bw: bw, xy: (u, v) => [links + offen + u, oben + 12 + v], v: s => (5 - s) * sg,
+    nr: f => [links + offen + (f - 0.5) * bw, oben + 12 + 5 * sg + 30], sn: s => [18, oben + 12 + (5 - s) * sg + 5] };
+}
+const uMitte = (G, f) => f === 0 ? -G.offen / 2 : (f - 0.5) * G.bw;
+function brettZeichnen() {
+  const bis = Z.brettBis, G = geometrie(bis), svg = $("brett");
+  Z.G = G; svg.setAttribute("viewBox", "0 0 " + G.W + " " + G.H); svg.innerHTML = "";
+  const P = (u, v) => G.xy(u, v);
+  const rect = (u0, u1, v0, v1, a) => { const p = P(u0, v0), q = P(u1, v1); return el("rect", Object.assign({ x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), width: Math.abs(q[0] - p[0]), height: Math.abs(q[1] - p[1]) }, a)); };
+  const linie = (u0, v0, u1, v1, a) => { const p = P(u0, v0), q = P(u1, v1); return el("line", Object.assign({ x1: p[0], y1: p[1], x2: q[0], y2: q[1] }, a)); };
+  const vRand = [-0.45 * G.sg, 5.45 * G.sg];
+  svg.appendChild(rect(0, bis * G.bw, vRand[0], vRand[1], { fill: "#4e3224", rx: 4 }));
+  const einlage = (f, v) => { const p = P(uMitte(G, f), v); svg.appendChild(el("circle", { cx: p[0], cy: p[1], r: 6, fill: "#e8dcc2" })); };
+  [3, 5, 7, 9].filter(f => f <= bis).forEach(f => einlage(f, 2.5 * G.sg));
+  if (bis >= 12) { einlage(12, 1.5 * G.sg); einlage(12, 3.5 * G.sg); }
+  for (let f = 1; f <= bis; f++) svg.appendChild(linie(f * G.bw, vRand[0], f * G.bw, vRand[1], { stroke: "#cfcfcf", "stroke-width": 3 }));
+  svg.appendChild(linie(0, vRand[0], 0, vRand[1], { stroke: "#f2ead8", "stroke-width": 7 }));
+  for (let s = 0; s < 6; s++) svg.appendChild(linie(-G.offen + 6, G.v(s), bis * G.bw, G.v(s), { stroke: "#e6dfcf", "stroke-width": (3.6 - s * 0.45).toFixed(2), class: "saite", "data-s": s }));
+  for (let f = 1; f <= bis; f++) { const p = G.nr(f); svg.appendChild(el("text", { x: p[0], y: p[1], "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#76685a" }, f)); }
+  for (let s = 0; s < 6; s++) { const p = G.sn(s); svg.appendChild(el("text", { x: p[0], y: p[1], "text-anchor": "middle", "font-size": 14, "font-weight": 800, fill: "#76685a" }, SAITE[s])); }
+  for (let s = 0; s < 6; s++) for (let f = 0; f <= bis; f++) {
+    const u0 = f === 0 ? -G.offen : (f - 1) * G.bw, u1 = f === 0 ? 0 : f * G.bw;
+    svg.appendChild(rect(u0, u1, G.v(s) - G.sg / 2, G.v(s) + G.sg / 2, { class: "zelle", "data-s": s, "data-f": f }));
+  }
+  svg.appendChild(el("g", { id: "marken" }));
+}
+function marke(s, f, text, art) {
+  const G = Z.G, p = G.xy(uMitte(G, f), G.v(s)), g = el("g", { class: "punkt " + (art || "") }), r = Math.min(15, G.sg * 0.47);
+  g.appendChild(el("circle", { cx: p[0], cy: p[1], r: r }));
+  if (text) g.appendChild(el("text", { x: p[0], y: p[1] + 4.5, "text-anchor": "middle", "font-size": text.length > 3 ? 10 : 13 }, text));
+  $("marken").appendChild(g);
+}
+const markenWeg = () => { const m = $("marken"); if (m) m.innerHTML = ""; };
+function saiteHervor(s) { document.querySelectorAll("#brett .saite").forEach(l => l.classList.toggle("an", +l.dataset.s === s)); }
+function brettBereich(bis) { if (Z.brettBis !== bis || !Z.G) { Z.brettBis = bis; brettZeichnen(); } }
+
+// ================= Notensystem (Violinschluessel mit 8) =================
+const ST_OBEN = 52, GAP = 18, HALB = 9, NOTE_X = 235, BASIS = 37;           // BASIS: e′ (geschrieben) auf der untersten Linie
+const weissStufe = m => Math.floor(m / 12) * 7 + NATUR.indexOf(pcVon(m));
+function notenBild(e) {
+  const svg = el("svg", { viewBox: "0 -34 380 252", "aria-label": "Note" }), unten = ST_OBEN + 4 * GAP, farbe = "#2e261d";
+  const L = (x1, y1, x2, y2, w) => svg.appendChild(el("line", { x1: x1, y1: y1, x2: x2, y2: y2, stroke: farbe, "stroke-width": w || 1.6 }));
+  for (let i = 0; i < 5; i++) L(20, ST_OBEN + i * GAP, 360, ST_OBEN + i * GAP);
+  const x = 62, y0 = ST_OBEN + 3 * GAP;                                           // Spirale um die G-Linie
+  const g = el("g", { stroke: farbe, fill: "none", "stroke-width": 4.4, "stroke-linecap": "round", "stroke-linejoin": "round" });
+  g.appendChild(el("path", { d: "M " + (x + 3) + " " + (y0 + 3) + " C " + (x - 9) + " " + (y0 + 3) + " " + (x - 9) + " " + (y0 - 14) + " " + (x + 3) + " " + (y0 - 15) +
+    " C " + (x + 17) + " " + (y0 - 16) + " " + (x + 21) + " " + (y0 + 2) + " " + (x + 13) + " " + (y0 + 13) +
+    " C " + (x + 5) + " " + (y0 + 23) + " " + (x - 14) + " " + (y0 + 23) + " " + (x - 20) + " " + (y0 + 9) +
+    " C " + (x - 26) + " " + (y0 - 8) + " " + (x - 10) + " " + (y0 - 26) + " " + (x + 3) + " " + (y0 - 38) +
+    " C " + (x + 15) + " " + (y0 - 50) + " " + (x + 17) + " " + (y0 - 68) + " " + (x + 9) + " " + (y0 - 80) +
+    " C " + (x + 3) + " " + (y0 - 89) + " " + (x - 6) + " " + (y0 - 82) + " " + (x - 5) + " " + (y0 - 68) +
+    " C " + (x - 4) + " " + (y0 - 45) + " " + (x + 8) + " " + (y0 + 10) + " " + (x + 9) + " " + (y0 + 40) +
+    " C " + (x + 10) + " " + (y0 + 52) + " " + (x + 3) + " " + (y0 + 59) + " " + (x - 5) + " " + (y0 + 55) }));
+  g.appendChild(el("circle", { cx: x - 5, cy: y0 + 50, r: 5, fill: farbe, stroke: "none" }));
+  svg.appendChild(g);
+  svg.appendChild(el("text", { x: x + 2, y: y0 + 76, "text-anchor": "middle", "font-size": 15, "font-weight": 800, fill: farbe }, "8"));
+  const st = weissStufe(e.base + 12), y = unten - (st - BASIS) * HALB;
+  for (let k = 1; k <= 4; k++) {
+    if (st <= BASIS - 2 * k) L(NOTE_X - 17, unten + k * GAP, NOTE_X + 17, unten + k * GAP);
+    if (st >= BASIS + 10 + 2 * (k - 1)) L(NOTE_X - 17, ST_OBEN - k * GAP, NOTE_X + 17, ST_OBEN - k * GAP);
+  }
+  if (e.acc) svg.appendChild(el("text", { x: NOTE_X - 34, y: y + (e.acc > 0 ? 9 : 5), "font-size": 30, "text-anchor": "middle", fill: farbe }, e.acc > 0 ? "♯" : "♭"));
+  if (st < BASIS + 4) L(NOTE_X + 9.5, y - 2, NOTE_X + 9.5, y - 48, 2.2); else L(NOTE_X - 9.5, y + 2, NOTE_X - 9.5, y + 48, 2.2);
+  svg.appendChild(el("ellipse", { cx: NOTE_X, cy: y, rx: 10.5, ry: 7.8, fill: farbe, transform: "rotate(-18 " + NOTE_X + " " + y + ")" }));
+  return svg;
+}
+
+// ================= Akkordbild =================
+function akkordSvg(name) {
+  const a = AKK[name], g = a.g.split(""), fi = a.f.split(""), fr = g.map(c => c === "x" ? -1 : +c);
+  const gedr = fr.filter(x => x > 0), max = gedr.length ? Math.max.apply(null, gedr) : 1, min = gedr.length ? Math.min.apply(null, gedr) : 1;
+  const start = max <= 4 ? 1 : min, nB = 4, L = 30, T = 36, sx = s => L + s * 20, by = j => T + j * 24, W = 2 * L + 100, H = T + nB * 24 + 12;
+  let s = '<svg viewBox="0 0 ' + W + " " + H + '" class="griff" role="img" aria-label="Griff ' + name + '">';
+  s += start === 1 ? '<rect x="' + (sx(0) - 1.5) + '" y="' + (T - 5) + '" width="' + (sx(5) - sx(0) + 3) + '" height="6" fill="#2e261d"/>'
+    : '<text x="' + (sx(0) - 9) + '" y="' + (by(0) + 17) + '" text-anchor="end" font-size="13" font-weight="800" fill="#76685a">' + start + "</text>";
+  for (let j = 0; j <= nB; j++) s += '<line x1="' + sx(0) + '" x2="' + sx(5) + '" y1="' + by(j) + '" y2="' + by(j) + '" stroke="#a89a85" stroke-width="1.6"/>';
+  for (let i = 0; i < 6; i++) s += '<line x1="' + sx(i) + '" x2="' + sx(i) + '" y1="' + by(0) + '" y2="' + by(nB) + '" stroke="#5a4e40" stroke-width="' + (1.2 + (5 - i) * 0.25) + '"/>';
+  if (a.b) { const j = a.b[0] - start; s += '<rect x="' + (sx(a.b[1]) - 9) + '" y="' + (by(j) + 3) + '" width="' + (sx(a.b[2]) - sx(a.b[1]) + 18) + '" height="18" rx="9" fill="#c4572a"/>' +
+    '<text x="' + sx(a.b[1]) + '" y="' + (by(j) + 16.5) + '" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">1</text>'; }
+  fr.forEach((f, i) => {
+    if (f < 0) s += '<text x="' + sx(i) + '" y="' + (T - 12) + '" text-anchor="middle" font-size="15" font-weight="800" fill="#cf4436">×</text>';
+    else if (f === 0) s += '<circle cx="' + sx(i) + '" cy="' + (T - 17) + '" r="5" fill="none" stroke="#2e261d" stroke-width="2"/>';
+    else {
+      const cy = by(f - start) + 12, imBarre = a.b && f === a.b[0] && i >= a.b[1] && i <= a.b[2] && fi[i] === "1";
+      if (!imBarre) s += '<circle cx="' + sx(i) + '" cy="' + cy + '" r="8.6" fill="#c4572a"/><text x="' + sx(i) + '" y="' + (cy + 4.4) + '" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">' + fi[i] + "</text>";
+    }
+  });
+  return s + "</svg>";
+}
+
+// ================= Ablauf =================
+function rueck(html, art) { const r = $("rueck"); r.innerHTML = html; r.className = art || ""; }
+function aufgabeText(haupt, neben) { $("aufgabe").innerHTML = haupt + (neben ? '<span class="neben">' + neben + "</span>" : ""); }
+function statistik() { $("statistik").textContent = Z.gefragt ? "Auf Anhieb richtig: " + Z.anhieb + " von " + Z.gefragt : ""; }
+function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("zeigen"); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove("zeigen"), 2200); }
+const oderSpielen = () => Z.git ? " – oder spiel es" : "";
+
+function neueAufgabe() {
+  const gen = ++Z.gen, st = S();
+  Z.frei = true; Z.erster = true;
+  rueck(""); $("bild").innerHTML = ""; $("wahl").innerHTML = "";
+  let A = Z.wiederhole; Z.wdh = !!A; Z.wiederhole = null;
+  $("brettBox").classList.toggle("weg", Z.modus === "akk");
+  if (Z.modus === "griff") {
+    brettBereich(st.bis); markenWeg(); saiteHervor(-1);
+    if (!A) {
+      let s, f, n = 0;
+      do { s = zufall(st.saiten); f = Math.floor(Math.random() * (st.bis + 1)); } while ((!st.vz && NATUR.indexOf(pcVon(STIMMUNG[s] + f)) < 0 || (Z.aufg && Z.aufg.s === s && Z.aufg.f === f)) && ++n < 50);
+      A = { typ: Math.random() < 0.5 ? "wo" : "was", s: s, f: f, pc: pcVon(STIMMUNG[s] + f), art: st.vz ? zufall(["k", "b"]) : "k" };
+    }
+    if (A.typ === "wo") {
+      saiteHervor(A.s);
+      aufgabeText("Wo liegt das " + tonName(A.pc, A.art) + " auf der " + SAITE_TEXT[A.s] + "?", "Bund antippen" + oderSpielen());
+    } else {
+      marke(A.s, A.f, "?", "ziel");
+      aufgabeText("Welcher Ton ist das?", SAITE_TEXT[A.s].replace(/^tiefen /, "tiefe ").replace(/^hohen /, "hohe ") + ", Bund " + A.f + oderSpielen());
+      const namen = st.vz ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : NATUR;
+      namen.forEach(pc => {
+        const b = document.createElement("button");
+        b.className = "knopf ton" + (pc in NAT ? "" : " lang"); b.textContent = tonName(pc, "beide"); b.dataset.pc = pc;
+        b.onclick = () => antwortName(pc, b);
+        $("wahl").appendChild(b);
+      });
+    }
+  } else if (Z.modus === "noten") {
+    brettBereich(st.bis); markenWeg(); saiteHervor(-1);
+    if (!A) {
+      const pool = [];
+      for (let m = st.lo; m <= st.hi; m++) {
+        if (!lagen(m, st.bis).length) continue;
+        if (NATUR.indexOf(pcVon(m)) >= 0) pool.push({ m: m, base: m, acc: 0 });
+        else if (st.vz) { pool.push({ m: m, base: m - 1, acc: 1 }); pool.push({ m: m, base: m + 1, acc: -1 }); }
+      }
+      let n = 0; do { A = { e: zufall(pool) }; } while (Z.aufg && Z.aufg.e && Z.aufg.e.m === A.e.m && ++n < 20);
+    }
+    $("bild").appendChild(notenBild(A.e));
+    aufgabeText("Wo spielst du diese Note?", "eine passende Stelle antippen" + oderSpielen());
+  } else {
+    const L = st.l;
+    if (!A) {
+      const ziel = zufall(L.filter(x => !Z.aufg || x !== Z.aufg.ziel));
+      const typen = ["name", "name", "griff"];
+      if (Z.git) typen.push("spielen", "spielen");
+      A = { typ: zufall(typen), ziel: ziel, wahl: mische([ziel].concat(mische(L.filter(x => x !== ziel)).slice(0, 2))) };
+    }
+    if (A.typ === "name") {
+      aufgabeText("Welcher Griff ist " + A.ziel + "?", AKK[A.ziel].n);
+      A.wahl.forEach(n => { const b = document.createElement("button"); b.className = "knopf akk"; b.innerHTML = akkordSvg(n); b.dataset.akk = n; b.onclick = () => antwortAkk(n, b); $("wahl").appendChild(b); });
+    } else if (A.typ === "griff") {
+      aufgabeText("Welcher Akkord ist das?", "");
+      $("bild").innerHTML = akkordSvg(A.ziel);
+      A.wahl.forEach(n => { const b = document.createElement("button"); b.className = "knopf name"; b.textContent = n; b.dataset.akk = n; b.onclick = () => antwortAkk(n, b); $("wahl").appendChild(b); });
+    } else {
+      aufgabeText("Spiel " + A.ziel, AKK[A.ziel].n + " – einmal kräftig anschlagen");
+      const b = document.createElement("button"); b.className = "knopf"; b.textContent = "Griff zeigen";
+      b.onclick = () => { Z.erster = false; $("bild").innerHTML = akkordSvg(A.ziel); schlage(A.ziel); b.remove(); };
+      $("wahl").appendChild(b);
+    }
+  }
+  Z.aufg = A;
+  $("hilfe").textContent = HILFE[Z.modus];
+  statistik();
+  return gen;
+}
+function weiter(ms) { const g = Z.gen; setTimeout(() => { if (g === Z.gen) neueAufgabe(); }, ms); }
+function gewertet(ok) {
+  if (Z.erster && !Z.wdh) { Z.gefragt++; if (ok) Z.anhieb++; }
+  if (ok) {
+    if (Z.erster) {
+      const k = "serie_" + Z.modus, n = (+lies(k, 0) || 0) + 1, st = stufe();
+      if (n >= 5 && st < 4) { schreib("stufe_" + Z.modus, st + 1); schreib(k, 0); stufenZeigen(); setTimeout(() => toast("Stufe " + (st + 1) + ": " + S().t), 300); }
+      else schreib(k, n);
+    }
+  } else schreib("serie_" + Z.modus, 0);
+  Z.erster = false;
+  statistik();
+}
+function richtig(text) { Z.frei = false; gewertet(true); klangGut(); rueck(text, "gut"); weiter(1500); }
+function falsch(text, wiederholen) { Z.frei = false; gewertet(false); klangSchlecht(); rueck(text, "schlecht"); if (wiederholen) Z.wiederhole = Z.aufg; weiter(2700); }
+
+// --- Antworten per Tippen ---
+// m = gespielter Ton; s/f = angetippte Stelle (null, wenn er von der Gitarre kommt)
+const saiteNom = s => SAITE_TEXT[s].replace(/^tiefen /, "tiefe ").replace(/^hohen /, "hohe ");
+function antwortWo(m, s, f) {
+  if (!Z.frei) return;
+  const A = Z.aufg, passend = [];
+  for (let ff = 0; ff <= Z.brettBis; ff++) if (pcVon(STIMMUNG[A.s] + ff) === A.pc) passend.push(ff);
+  const name = tonName(A.pc, A.art), ok = pcVon(m) === A.pc && (s == null || s === A.s);
+  markenWeg(); passend.forEach(ff => marke(A.s, ff, name, "gut"));
+  if (ok) { richtig("<b>Richtig!</b> " + name + " auf der " + SAITE_TEXT[A.s] + ": Bund " + passend.join(" und ")); return; }
+  if (s != null) marke(s, f, tonName(m, A.art), "schlecht");
+  const was = s == null ? "Gespielt: " + hoehe(m) + ". " : s !== A.s ? "Das war die " + saiteNom(s) + ". " : "Das war " + tonName(m, A.art) + ". ";
+  falsch(was + "<b>" + name + "</b> liegt auf der " + SAITE_TEXT[A.s] + " im Bund " + passend.join(" und ") + ".", true);
+}
+function antwortNote(m, s, f) {
+  if (!Z.frei) return;
+  const A = Z.aufg, ziel = A.e.m, alle = lagen(ziel, Z.brettBis), pc = pcVon(ziel);
+  const name = A.e.acc > 0 ? KREUZ[pc] : A.e.acc < 0 ? BE[pc] : NAT[pc], wo = alle.map(p => SAITE[p.s] + "-Saite Bund " + p.f).join(", ");
+  markenWeg(); alle.forEach(p => marke(p.s, p.f, name, "gut"));
+  if (m === ziel) { richtig("<b>Richtig, das ist " + name + ".</b> Hier liegt es: " + wo); return; }
+  if (s != null) marke(s, f, tonName(m, A.e.acc < 0 ? "b" : "k"), "schlecht");
+  falsch((s == null ? "Gespielt: " : "Das war ") + hoehe(m) + ". Gesucht war <b>" + name + "</b>: " + wo + ".", true);
+}
+function antwortName(pc, knopf) {
+  if (!Z.frei) return;
+  const A = Z.aufg, m = STIMMUNG[A.s] + A.f;
+  markenWeg(); marke(A.s, A.f, tonName(A.pc, A.art === "b" ? "b" : "k"), pc === A.pc ? "gut" : "schlecht");
+  zupfe(m);
+  if (pc === A.pc) { if (knopf) knopf.classList.add("richtig"); richtig("<b>Richtig!</b> " + SAITE[A.s] + "-Saite, Bund " + A.f + " = " + tonName(A.pc, "beide")); }
+  else {
+    if (knopf) knopf.classList.add("falsch");
+    document.querySelectorAll("#wahl .ton").forEach(b => { if (+b.dataset.pc === A.pc) b.classList.add("richtig"); });
+    falsch("Das ist <b>" + tonName(A.pc, "beide") + "</b>, nicht " + tonName(pc, "beide") + ".", true);
+  }
+}
+function antwortAkk(n, knopf) {
+  if (!Z.frei) return;
+  const A = Z.aufg;
+  schlage(A.ziel);
+  if (n === A.ziel) { if (knopf) knopf.classList.add("richtig"); if (A.typ !== "griff") $("bild").innerHTML = akkordSvg(A.ziel); richtig("<b>Richtig: " + A.ziel + "</b> (" + AKK[A.ziel].n + ")"); }
+  else {
+    if (knopf) knopf.classList.add("falsch");
+    document.querySelectorAll("#wahl [data-akk]").forEach(b => { if (b.dataset.akk === A.ziel) b.classList.add("richtig"); });
+    falsch("Das war " + n + ". Gesucht war <b>" + A.ziel + "</b> (" + AKK[A.ziel].n + ").", true);
+  }
+}
+$("brett").addEventListener("pointerdown", ev => {
+  const z = ev.target.closest && ev.target.closest(".zelle"); if (!z) return;
+  ev.preventDefault(); ac();
+  const s = +z.dataset.s, f = +z.dataset.f, m = STIMMUNG[s] + f;
+  zupfe(m);
+  if (!Z.frei || !Z.aufg) return;
+  if (Z.modus === "griff" && Z.aufg.typ === "wo") antwortWo(m, s, f);
+  else if (Z.modus === "noten") antwortNote(m, s, f);
+});
+
+// --- Antworten mit der Gitarre ---
+// Auf welcher Saite gespielt wurde, hoert man nicht; gewertet wird die Tonhoehe. Richtiger Ton in falscher Oktave: Hinweis, kein Fehler.
+function gitTon(m) {
+  if (!Z.frei || !Z.aufg) return;
+  const A = Z.aufg;
+  if (Z.modus === "griff" && A.typ === "wo") {
+    const f = m - STIMMUNG[A.s];
+    if (pcVon(m) === A.pc && (f < 0 || f > Z.brettBis)) rueck("Richtiger Ton, aber nicht auf der " + SAITE_TEXT[A.s] + " (" + hoehe(m) + "). Nochmal.", "schlecht");
+    else antwortWo(m, null, null);
+  } else if (Z.modus === "griff" && A.typ === "was") {
+    if (m === STIMMUNG[A.s] + A.f) antwortName(A.pc, document.querySelector('#wahl .ton[data-pc="' + A.pc + '"]'));
+    else if (pcVon(m) === A.pc) rueck("Richtiger Ton, falsche Oktave (" + hoehe(m) + "). Spiel genau diese Stelle.", "schlecht");
+    else antwortName(pcVon(m), document.querySelector('#wahl .ton[data-pc="' + pcVon(m) + '"]'));
+  } else if (Z.modus === "noten") {
+    if (m !== A.e.m && pcVon(m) === pcVon(A.e.m)) rueck("Richtiger Ton, falsche Oktave (" + hoehe(m) + "). Die Gitarre klingt eine Oktave tiefer als notiert.", "schlecht");
+    else antwortNote(m, null, null);
+  }
+}
+function gitAkkord(werte) {                                       // werte: Aehnlichkeit je Akkord der Stufe
+  if (!Z.frei || !Z.aufg || Z.modus !== "akk" || Z.aufg.typ !== "spielen") return;
+  const A = Z.aufg, liste = Object.keys(werte).sort((a, b) => werte[b] - werte[a]), best = liste[0];
+  if (best === A.ziel && werte[best] >= 0.72) { $("bild").innerHTML = akkordSvg(A.ziel); richtig("<b>" + A.ziel + " erkannt!</b> (" + AKK[A.ziel].n + ")"); }
+  else { Z.erster = false; rueck("Klingt eher nach " + best + ". Nochmal anschlagen, oder „Griff zeigen“.", "schlecht"); }
+}
+
+// ================= Tonerkennung (YIN) und Akkorde (Tonklassen-Energie) =================
+const GIT = { strom: null, an: [], zeit: new Float32Array(8192), freq: null, rausch: 0.003, vorher: 0, stabil: 0, letzt: 0, gemeldet: null, armiert: true,
+  akk: null, sperreBis: 0, ereignisse: [] };
+function yin(x, sr) {
+  const n = x.length >> 1, b = new Float32Array(n); for (let i = 0; i < n; i++) b[i] = (x[2 * i] + x[2 * i + 1]) * 0.5;
+  sr /= 2;
+  const W = n >> 1, tMin = Math.max(2, Math.floor(sr / 1500)), tMax = Math.min(W - 1, Math.ceil(sr / 70)), c = new Float32Array(tMax + 2);
+  let summe = 0; c[0] = 1;
+  for (let t = 1; t <= tMax; t++) { let s = 0; for (let i = 0; i < W; i++) { const v = b[i] - b[i + t]; s += v * v; } summe += s; c[t] = summe ? s * t / summe : 1; }
+  let t = -1;
+  for (let k = tMin; k <= tMax; k++) if (c[k] < 0.15) { while (k + 1 <= tMax && c[k + 1] < c[k]) k++; t = k; break; }
+  if (t < 0) return 0;
+  const a0 = c[t - 1], a1 = c[t], a2 = t + 1 <= tMax ? c[t + 1] : c[t], nenner = a0 + a2 - 2 * a1;
+  return sr / (nenner ? t + (a0 - a2) / (2 * nenner) : t);
+}
+function tonklassen(an) {
+  if (!GIT.freq) GIT.freq = new Float32Array(an.frequencyBinCount);
+  an.getFloatFrequencyData(GIT.freq);
+  const sr = AC.sampleRate, N = an.fftSize, v = new Float32Array(12);
+  for (let k = 2; k < GIT.freq.length; k++) {
+    const f = k * sr / N; if (f < 75) continue; if (f > 1400) break;
+    const mag = Math.pow(10, GIT.freq[k] / 20), m = 69 + 12 * Math.log2(f / 440), r = Math.round(m);
+    if (Math.abs(m - r) > 0.35) continue;                          // nur Energie nahe an Halbtoenen
+    v[pcVon(r)] += mag;
+  }
+  return v;
+}
+function aehnlichkeit(v, toene) { let dot = 0, nv = 0; for (let i = 0; i < 12; i++) nv += v[i] * v[i]; toene.forEach(pc => { dot += v[pc]; }); return nv ? dot / (Math.sqrt(nv) * Math.sqrt(toene.length)) : 0; }
+function rms(x, von) { let s = 0; for (let i = von; i < x.length; i++) s += x[i] * x[i]; return Math.sqrt(s / (x.length - von)); }
+function stimmAnzeige(mf) {
+  const nadel = $("nadel");
+  if (mf == null) { nadel.style.opacity = 0.25; return; }
+  const r = Math.round(mf), cent = Math.round((mf - r) * 100);
+  $("stimmTon").textContent = hoehe(r);
+  let s = -1, best = 9; STIMMUNG.forEach((o, i) => { const d = Math.abs(mf - o); if (d < best) { best = d; s = i; } });
+  $("stimmInfo").textContent = (cent > 0 ? "+" : "") + cent + " Cent" + (best < 1 ? " · " + SAITE[s] + "-Saite: " + ((mf - STIMMUNG[s]) * 100 > 0 ? "+" : "") + Math.round((mf - STIMMUNG[s]) * 100) + " Cent" : "");
+  nadel.style.opacity = 1; nadel.style.left = (50 + Math.max(-50, Math.min(50, cent))) + "%";
+}
+function gitSchleife() {
+  if (!Z.git) return;
+  requestAnimationFrame(gitSchleife);
+  let an = GIT.an[0], laut = -1;
+  GIT.an.forEach(a => { a.getFloatTimeDomainData(GIT.zeit); const r = rms(GIT.zeit, 6144); if (r > laut) { laut = r; an = a; } });
+  an.getFloatTimeDomainData(GIT.zeit);
+  const r = laut, jetzt = AC.currentTime;
+  $("pegel").firstChild.style.width = Math.min(100, Math.sqrt(r) * 220) + "%";
+  GIT.rausch = r < GIT.rausch ? r : GIT.rausch * 0.998 + r * 0.002;
+  const schwelle = Math.max(0.004, GIT.rausch * 3.5);
+  const anschlag = r > schwelle && r > GIT.vorher * 1.8 && r > 0.008;
+  GIT.vorher = GIT.vorher * 0.6 + r * 0.4;
+  if (jetzt < Z.stummBis) { GIT.armiert = false; GIT.akk = null; return; }   // eigener Klang laeuft
+  if (anschlag) { GIT.armiert = true; GIT.gemeldet = null; if (Z.modus === "akk" && Z.aufg && Z.aufg.typ === "spielen" && Z.frei && jetzt > GIT.sperreBis) GIT.akk = { von: jetzt + 0.06, bis: jetzt + 0.42, v: new Float32Array(12) }; }
+  // Akkord sammeln und werten
+  if (GIT.akk && jetzt >= GIT.akk.von) {
+    const v = tonklassen(an); let s = 0; for (let i = 0; i < 12; i++) s += v[i]; if (s) for (let i = 0; i < 12; i++) GIT.akk.v[i] += v[i] / s;
+    if (jetzt >= GIT.akk.bis) {
+      const werte = {}; S().l.forEach(n => { werte[n] = aehnlichkeit(GIT.akk.v, akkToene(n)); });
+      GIT.ereignisse.push({ akkord: Object.keys(werte).sort((a, b) => werte[b] - werte[a])[0], werte: werte });
+      GIT.akk = null; GIT.sperreBis = jetzt + 0.5; gitAkkord(werte);
+    }
+  }
+  if (r < schwelle) { GIT.armiert = true; GIT.gemeldet = null; GIT.stabil = 0; stimmAnzeige(null); return; }
+  const f = yin(GIT.zeit.subarray(8192 - 2048), AC.sampleRate);
+  if (!f) { GIT.stabil = 0; return; }
+  const mf = 69 + 12 * Math.log2(f / 440);
+  if (Math.abs(mf - GIT.letzt) < 0.4) GIT.stabil++; else GIT.stabil = 1;
+  GIT.letzt = mf;
+  if (GIT.stabil >= 3) {
+    stimmAnzeige(mf);
+    const m = Math.round(mf);
+    if ((GIT.armiert || (GIT.gemeldet != null && m !== GIT.gemeldet)) && !(Z.modus === "akk")) {
+      GIT.armiert = false; GIT.gemeldet = m; GIT.ereignisse.push({ ton: m, cent: Math.round((mf - m) * 100) });
+      gitTon(m);
+    }
+  }
+}
+async function gitVerbinden() {
+  const a = ac(); if (!a || !navigator.mediaDevices) { rueck("Dieser Browser erlaubt keinen Audio-Eingang.", "schlecht"); return; }
+  gitTrennen(true);
+  const id = $("gitQuelle").value;
+  try {
+    GIT.strom = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false,
+      autoGainControl: false, channelCount: { ideal: 2 } } });
+  } catch (e) { rueck("Kein Zugriff auf den Eingang: " + (e.message || e.name), "schlecht"); return; }
+  const q = a.createMediaStreamSource(GIT.strom), teiler = a.createChannelSplitter(2), still = a.createGain();
+  still.gain.value = 0; still.connect(a.destination);
+  q.connect(teiler);
+  GIT.an = [0, 1].map(i => { const an = a.createAnalyser(); an.fftSize = 8192; an.smoothingTimeConstant = 0; teiler.connect(an, i); an.connect(still); return an; });
+  schreib("quelle", id);
+  Z.git = true;
+  $("gitKnopf").classList.add("hoert"); $("gitKnopf").textContent = "🎸 hört zu";
+  $("gitVerbinden").classList.add("weg"); $("gitTrennen").classList.remove("weg");
+  await quellenListe();
+  gitSchleife();
+  neueAufgabe();
+}
+function gitTrennen(still) {
+  if (GIT.strom) GIT.strom.getTracks().forEach(t => t.stop());
+  GIT.strom = null; GIT.an = [];
+  if (Z.git && !still) { Z.git = false; neueAufgabe(); }
+  Z.git = false;
+  $("gitKnopf").classList.remove("hoert"); $("gitKnopf").textContent = "🎸 Gitarre anschließen";
+  $("gitVerbinden").classList.remove("weg"); $("gitTrennen").classList.add("weg");
+  $("pegel").firstChild.style.width = "0"; stimmAnzeige(null);
+}
+async function quellenListe() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  const sel = $("gitQuelle"), gewaehlt = sel.value || lies("quelle", "");
+  try {
+    const l = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
+    sel.innerHTML = '<option value="">Standard-Eingang</option>' + l.filter(d => d.deviceId && d.deviceId !== "default").map((d, i) => '<option value="' + d.deviceId.replace(/"/g, "&quot;") + '">' + (d.label || "Eingang " + (i + 1)).replace(/</g, "&lt;") + "</option>").join("");
+    sel.value = l.some(d => d.deviceId === gewaehlt) ? gewaehlt : "";
+  } catch (e) {}
+}
+
+// ================= Bedienung =================
+function stufenZeigen() {
+  const box = $("stufenKnoepfe"), n = stufe();
+  box.innerHTML = "";
+  for (let i = 1; i <= 4; i++) {
+    const b = document.createElement("button"); b.textContent = i; b.className = i === n ? "an" : ""; b.setAttribute("aria-label", "Stufe " + i + ": " + STUFEN[Z.modus][i - 1].t);
+    b.onclick = () => { schreib("stufe_" + Z.modus, i); schreib("serie_" + Z.modus, 0); stufenZeigen(); Z.wiederhole = null; neueAufgabe(); };
+    box.appendChild(b);
+  }
+  $("stufenText").textContent = S().t;
+}
+document.querySelectorAll("#modi button").forEach(b => b.addEventListener("click", () => {
+  Z.modus = b.dataset.modus; schreib("modus", Z.modus); Z.wiederhole = null; Z.aufg = null;
+  document.querySelectorAll("#modi button").forEach(x => x.classList.toggle("an", x === b));
+  stufenZeigen(); neueAufgabe();
+}));
+$("gitKnopf").addEventListener("click", () => { ac(); $("gitPanel").classList.toggle("weg"); quellenListe(); });
+$("gitVerbinden").addEventListener("click", () => gitVerbinden());
+$("gitTrennen").addEventListener("click", () => gitTrennen(false));
+$("gitQuelle").addEventListener("change", () => { if (Z.git) gitVerbinden(); });
+let drehT = 0;
+window.addEventListener("resize", () => { clearTimeout(drehT); drehT = setTimeout(() => { const alt = Z.G && Z.G.hoch; if (Z.G && geometrie(Z.brettBis).hoch !== alt && Z.frei) { Z.G = null; Z.wiederhole = Z.aufg; neueAufgabe(); } }, 200); });
+
+// Start
+Z.modus = ["griff", "noten", "akk"].indexOf(lies("modus", "griff")) >= 0 ? lies("modus", "griff") : "griff";
+document.querySelectorAll("#modi button").forEach(x => x.classList.toggle("an", x.dataset.modus === Z.modus));
+stufenZeigen(); neueAufgabe();
+document.addEventListener("pointerdown", () => ac(), { once: true });
+
+// Fuer Tests
+window.GITARRE = { Z: Z, GIT: GIT, STUFEN: STUFEN, AKK: AKK, STIMMUNG: STIMMUNG, lagen: lagen, akkToene: akkToene, tonName: tonName, hoehe: hoehe, yin: yin,
+  aehnlichkeit: aehnlichkeit, neu: neueAufgabe, wo: antwortWo, note: antwortNote, name: antwortName, akk: antwortAkk, gitTon: gitTon, stufe: stufe };
+})();
+</script>
+<script src="../../zurueck.js"></script>
+</body>
+</html>
