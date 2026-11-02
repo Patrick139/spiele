@@ -203,6 +203,7 @@ var LERNEN = {
     this.el("kBauen").onclick = function () { TOENE.tipp(); BAUEN.start(); };
     this.el("kFuettern").onclick = function () { TOENE.tipp(); FUETTERN.start(); };
     this.el("kUhr").onclick = function () { TOENE.tipp(); UHR.start(); };
+    this.el("kNoten").onclick = function () { TOENE.tipp(); location.href = "noten/index.html"; };   // eigene Seite (Notenrally)
     this.el("kEinst").onclick = function () { self.einstellungen(); };
     var hm = MAMPFI.einsetzen(this.el("hubMampfi"));
     hm.onclick = function () { MAMPFI.kitzeln(hm); };

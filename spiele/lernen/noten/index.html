@@ -15,6 +15,9 @@
   #wrap{max-width:820px;margin:0 auto;padding:14px 12px 30px}
   header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
   h1{font-size:26px;margin:0;letter-spacing:.5px}
+  #heim{align-self:center;text-decoration:none;font-size:22px;line-height:1;background:var(--card);border:1px solid #26325a;
+    border-radius:12px;padding:7px 10px;position:relative;z-index:101}   /* auch ueber dem Startfenster erreichbar */
+  #heim:hover{background:var(--card2)}
   h1 .sub{color:var(--dim);font-size:14px;font-weight:normal}
 
   #hud{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
@@ -38,7 +41,7 @@
 
   #stage{background:var(--card);border-radius:16px;padding:12px 10px 6px;border:1px solid #26325a}
   #staffBox{min-height:190px;display:flex;align-items:center;justify-content:center}
-  #staff{width:100%;max-width:560px;height:auto;display:block}
+  #staff{width:100%;max-width:460px;height:auto;display:block}
   #earbox{text-align:center;font-size:54px;padding:34px 0}
   #earbox .hint{display:block;font-size:15px;color:var(--dim);margin-top:10px}
   #replay{background:var(--card2);border:1px solid #2c3a66;color:var(--ink);border-radius:10px;
@@ -52,7 +55,10 @@
   .fok #ftext b{color:var(--ok)} .fbad #ftext b{color:var(--bad)}
 
   #kbWrap{margin-top:6px;user-select:none}
-  #kb{position:relative;height:150px;display:flex}
+  #kb{position:relative;height:150px;display:flex;touch-action:manipulation}
+  #kb.pc .wk[data-taste]::before,#kb.pc .bk[data-taste]::before{content:attr(data-taste);display:block;text-align:center;
+    margin-top:6px;font-size:12px;font-weight:700;text-transform:uppercase;color:#8a8270}
+  #kb.pc .bk[data-taste]::before{color:#c9cede}
   .wk{flex:1;background:linear-gradient(#fdfbf3,#e8e2cf);border:1px solid #7a7460;border-radius:0 0 6px 6px;
     cursor:pointer;position:relative;margin:0 -0.5px}
   .wk:active{filter:brightness(.93)}
@@ -88,6 +94,7 @@
 <body>
 <div id="wrap">
   <header>
+    <a id="heim" href="../index.html" aria-label="Zurück zur Lernecke" title="Zurück zur Lernecke">🏠</a>
     <h1>🎼 Notenrally <span class="sub">Noten lesen &amp; hören — für Kinder und Erwachsene</span></h1>
   </header>
 
@@ -118,7 +125,7 @@
 
   <div id="stage">
     <div id="staffBox">
-      <svg id="staff" viewBox="0 0 560 190" aria-label="Notensystem"></svg>
+      <svg id="staff" viewBox="0 -12 380 214" aria-label="Notensystem"></svg>
       <div id="earbox" style="display:none">🎧<span class="hint">Hineinhören und die richtige Taste finden</span></div>
     </div>
     <button id="replay">🔊 Nochmal hören</button>
@@ -126,9 +133,9 @@
     <div id="kbWrap"><div id="kb"></div></div>
   </div>
 
-  <div id="help">Im Einsteiger-Modus steht der Notenname auf der Taste.
-    Tastatur mitspielen: <b>A&nbsp;S&nbsp;D&nbsp;F&nbsp;G&nbsp;H&nbsp;J&nbsp;K</b> = die weißen Tasten von links nach rechts,
-    <b>W&nbsp;E&nbsp;T&nbsp;Z&nbsp;U</b> = die schwarzen dazwischen. Oder einfach auf die Tasten klicken/tippen.</div>
+  <div id="help">Im Einsteiger-Modus steht der Notenname auf der Taste. Notennamen mit Oktave: c′ ist das mittlere C,
+    c″ eine Oktave höher, c eine tiefer.<br>Am Computer: <b>A&nbsp;S&nbsp;D&nbsp;F&nbsp;G&nbsp;H&nbsp;J&nbsp;K&nbsp;L&nbsp;Ö&nbsp;Ä</b> = weiße Tasten,
+    <b>W&nbsp;E&nbsp;T&nbsp;Z&nbsp;U&nbsp;…</b> = schwarze; nach dem ersten Tastendruck stehen die Buchstaben auf den Tasten.</div>
   <div id="stats"></div>
 </div>
 
@@ -164,6 +171,15 @@ function entryName(e){
           :             FLATNAME[e.base%12];
   return n + (Math.floor(e.base/12)-1);   // z.B. Des3
 }
+// Anzeige-Name: Einsteiger wie auf der Taste (C, D, Fis), sonst deutsche Oktavschreibweise:
+// große Oktave C, kleine Oktave c, eingestrichen c′ (mittleres C), zweigestrichen c″, dreigestrichen c‴
+function zeigName(e){
+  const n = e.acc===0 ? NAMES[e.base%12] : e.acc===1 ? NAMES[e.base%12]+"is" : FLATNAME[e.base%12];
+  if(S.diff==="einsteiger") return n;
+  const okt=Math.floor(e.base/12)-1;
+  if(okt<=2) return n;
+  return n.toLowerCase()+["","′","″","‴","⁗"][okt-3];
+}
 // diatonischer Stufenindex (C=0 je Oktave); Vorzeichen-Töne stehen wie ihr Grundton
 function diastep(m){
   const pc = m%12;
@@ -181,7 +197,7 @@ const DIFFS = {
     ranges:{violin:[[60,67],[60,72],[57,72],[55,72]],
             bass:  [[50,60],[48,60],[43,60],[36,60]]} },
   expert:    { every:4, kb:{violin:[55,84], bass:[36,64]},   // bis ~3 Oktaven
-    ranges:{violin:[[57,72],[55,79],[55,84],[48,84]],
+    ranges:{violin:[[57,72],[55,76],[55,79],[55,84]],
             bass:  [[50,62],[48,62],[43,64],[36,64]]} }
 };
 const kbRange = () => DIFFS[S.diff].kb[S.clef];
@@ -191,14 +207,11 @@ const accOn   = () => S.sharp && S.diff!=="einsteiger";
 const S = { mode:"lesen", clef:"violin", diff:"normal", sharp:false, started:false,
             score:0, best:0, streak:0, level:1, correctTotal:0,
             current:null, locked:true, repeat:null, qStart:0,
-            answered:0, hits:0 };
-try{
-  const saved = JSON.parse(localStorage.getItem("notenrally")||"{}");
-  S.best = saved.best||0; S.hits = saved.hits||0; S.answered = saved.answered||0;
-}catch(e){}
+            gen:0, ersteAntwort:false, wiederholung:false, gefragt:0, anhieb:0 };
+// gespeichert wird nur der Bestwert; die Trefferquote gilt fuer das laufende Spiel
+try{ S.best = JSON.parse(localStorage.getItem("notenrally")||"{}").best||0; }catch(e){}
 function save(){
-  try{ localStorage.setItem("notenrally",
-      JSON.stringify({best:S.best,hits:S.hits,answered:S.answered})); }catch(e){}
+  try{ localStorage.setItem("notenrally", JSON.stringify({best:S.best})); }catch(e){}
 }
 
 // ---------------- Klang ----------------
@@ -252,7 +265,7 @@ function pool(){
 
 // ---------------- Notensystem zeichnen ----------------
 const SVGNS="http://www.w3.org/2000/svg";
-const STAFF_TOP=52, GAP=18, HALF=GAP/2, NOTE_X=360;
+const STAFF_TOP=52, GAP=18, HALF=GAP/2, NOTE_X=235, LINIE_L=20, LINIE_R=360;
 function whiteStep(w){ return Math.floor(w/12)*7 + WHITE_PC.indexOf(w%12); }
 function entryY(e){
   return (STAFF_TOP+4*GAP) - (whiteStep(e.base)-CLEF_BASE[S.clef].baseStep)*HALF;
@@ -263,30 +276,32 @@ function el(tag,attrs){
   for(const k in attrs) e.setAttribute(k,attrs[k]);
   return e;
 }
-// schlanker, von Hand gezeichneter Schluessel (keine Notenschrift-Noetige)
+// Schluessel als Linienzug (keine Notenschrift noetig). Violinschluessel: Spirale um die G-Linie (2. von unten),
+// Bassschluessel: Kopf auf der F-Linie (2. von oben), die zwei Punkte liegen ober- und unterhalb dieser Linie.
 function drawClef(svg){
-  const x=78, yTop=STAFF_TOP;
+  const farbe="#ffd75e";
+  const g=el("g",{stroke:farbe,fill:"none","stroke-width":4.6,"stroke-linecap":"round","stroke-linejoin":"round"});
   if(S.clef==="violin"){
-    const g=el("g",{stroke:"#ffd75e",fill:"none","stroke-width":5,
-      "stroke-linecap":"round"});
-    // Griff oben mit Haken
-    g.appendChild(el("path",{d:`M ${x+4} ${yTop-34} C ${x+12} ${yTop-44} ${x+20} ${yTop-40} ${x+19} ${yTop-29} C ${x+18} ${yTop-16} ${x+6} ${yTop-8} ${x+4} ${yTop+14} L ${x+4} ${yTop+58}`}));
-    // grobe Spirale um die G-Linie (2. von unten = yTop+3*GAP)
-    g.appendChild(el("path",{d:`M ${x+4} ${yTop+58} C ${x+4} ${yTop+78} ${x+26} ${yTop+82} ${x+30} ${yTop+64} C ${x+34} ${yTop+46} ${x+18} ${yTop+34} ${x+6} ${yTop+42}`}));
-    // Schwung unten
-    g.appendChild(el("path",{d:`M ${x+19} ${yTop-29} C ${x+10} ${yTop-14} ${x-4} ${yTop+2} ${x-6} ${yTop+30} C ${x-8} ${yTop+58} ${x+2} ${yTop+78} ${x+14} ${yTop+88} C ${x+22} ${yTop+94} ${x+30} ${yTop+90} ${x+30} ${yTop+80}`}));
-    svg.appendChild(g);
+    const x=62, y=STAFF_TOP+3*GAP;                      // Mitte der Spirale = G-Linie
+    g.appendChild(el("path",{d:
+      `M ${x+3} ${y+3} C ${x-9} ${y+3} ${x-9} ${y-14} ${x+3} ${y-15}`+
+      ` C ${x+17} ${y-16} ${x+21} ${y+2} ${x+13} ${y+13}`+
+      ` C ${x+5} ${y+23} ${x-14} ${y+23} ${x-20} ${y+9}`+
+      ` C ${x-26} ${y-8} ${x-10} ${y-26} ${x+3} ${y-38}`+
+      ` C ${x+15} ${y-50} ${x+17} ${y-68} ${x+9} ${y-80}`+
+      ` C ${x+3} ${y-89} ${x-6} ${y-82} ${x-5} ${y-68}`+
+      ` C ${x-4} ${y-45} ${x+8} ${y+10} ${x+9} ${y+40}`+
+      ` C ${x+10} ${y+52} ${x+3} ${y+59} ${x-5} ${y+55}`}));
+    g.appendChild(el("circle",{cx:x-5,cy:y+50,r:5,fill:farbe,stroke:"none"}));
   }else{
-    const g=el("g",{stroke:"#ffd75e",fill:"none","stroke-width":5,
-      "stroke-linecap":"round"});
-    // Schuessel + Griff: die F-Linie (2. von oben = yTop+GAP) wird eingekreist
-    g.appendChild(el("path",{d:`M ${x-12} ${yTop-6} C ${x+14} ${yTop-12} ${x+30} ${yTop+4} ${x+28} ${yTop+22} C ${x+26} ${yTop+42} ${x+10} ${yTop+54} ${x-8} ${yTop+66}`}));
-    g.appendChild(el("path",{d:`M ${x+18} ${yTop+8} L ${x+30} ${yTop+8} C ${x+38} ${yTop+28} ${x+34} ${yTop+52} ${x+16} ${yTop+70}`}));
-    const d1=el("circle",{cx:x+44,cy:yTop-4,r:4,fill:"#ffd75e",stroke:"none"});
-    const d2=el("circle",{cx:x+44,cy:yTop+12,r:4,fill:"#ffd75e",stroke:"none"});
-    g.appendChild(d1); g.appendChild(d2);
-    svg.appendChild(g);
+    const x=44, y=STAFF_TOP+GAP;                        // F-Linie
+    g.appendChild(el("circle",{cx:x+2,cy:y,r:6.5,fill:farbe,stroke:"none"}));
+    g.appendChild(el("path",{d:`M ${x+2} ${y-2} C ${x+2} ${y-20} ${x+26} ${y-24} ${x+36} ${y-12} C ${x+48} ${y+2} ${x+40} ${y+30} ${x+4} ${y+50}`,
+      "stroke-width":5}));
+    g.appendChild(el("circle",{cx:x+52,cy:y-HALF,r:3.6,fill:farbe,stroke:"none"}));
+    g.appendChild(el("circle",{cx:x+52,cy:y+HALF,r:3.6,fill:farbe,stroke:"none"}));
   }
+  svg.appendChild(g);
 }
 function renderStaff(midi){
   const svg=document.getElementById("staff");
@@ -294,7 +309,7 @@ function renderStaff(midi){
   if(typeof midi==="number") midi=mkEntry(midi);  // Zahl oder Eintrag
   const cfg=CLEF_BASE[S.clef], yBottom=STAFF_TOP+4*GAP;
   for(let i=0;i<5;i++)
-    svg.appendChild(el("line",{x1:40,x2:520,y1:STAFF_TOP+i*GAP,y2:STAFF_TOP+i*GAP,
+    svg.appendChild(el("line",{x1:LINIE_L,x2:LINIE_R,y1:STAFF_TOP+i*GAP,y2:STAFF_TOP+i*GAP,
       stroke:"#cfd6e4","stroke-width":1.6}));
   drawClef(svg);
   const step=whiteStep(midi.base), y=entryY(midi);
@@ -331,7 +346,8 @@ function keyByMidi(m){ return document.querySelector(`#kb [data-midi="${m}"]`); 
 function buildKb(){
   const [lo,hi]=kbRange();
   const kb=document.getElementById("kb");
-  kb.className = S.diff==="einsteiger" ? "labels hideBlack" : "";
+  const pc=kb.classList.contains("pc");
+  kb.className = (S.diff==="einsteiger" ? "labels hideBlack" : "") + (pc ? " pc" : "");
   kb.innerHTML="";
   let whiteIdx=0, whites=0;
   for(let m=lo;m<=hi;m++) if(isWhite(m)) whites++;
@@ -351,19 +367,24 @@ function buildKb(){
     }
     k.addEventListener("pointerdown",ev=>{ev.preventDefault();submit(m);});
   }
-  // schwarze Tasten an weiße Breite anpassen (Experte: bis 18 weisse Tasten)
+  schwarzeBreite(); tastenBeschriften();
+}
+// schwarze Tasten an weiße Breite anpassen (Experte: bis 18 weisse Tasten)
+function schwarzeBreite(){
+  const kb=document.getElementById("kb"), whites=kb.querySelectorAll(".wk").length||1;
   const ww=kb.clientWidth/whites || 46;
   const bw=Math.max(15, Math.min(30, ww*0.6));
-  kb.querySelectorAll(".bk").forEach(b=>{
-    b.style.width=bw+"px"; b.style.marginLeft=(-bw/2)+"px";
-  });
+  kb.querySelectorAll(".bk").forEach(b=>{ b.style.width=bw+"px"; b.style.marginLeft=(-bw/2)+"px"; });
 }
+window.addEventListener("resize", schwarzeBreite);
 
 // ---------------- Ablauf ----------------
 const PRAISE=["Top!","Genau!","Perfekt!","Stark!","Weiter so!","Klasse!","Ja!"];
 function startQuestion(){
   S.locked=false; S.qStart=Date.now();
+  const gen=++S.gen;                     // alte Zeitgeber (Tipp, naechste Frage) laufen ins Leere
   document.querySelectorAll("#kb .hint").forEach(x=>x.classList.remove("hint"));
+  S.ersteAntwort=true; S.wiederholung=(S.repeat!=null);
   let e;
   if(S.repeat!=null){ e=S.repeat; S.repeat=null; }
   else{
@@ -372,7 +393,8 @@ function startQuestion(){
     do{ e=p[Math.floor(Math.random()*p.length)]; }
     while(p.length>1 && S.current && e.m===S.current.m && ++guard<20);
   }
-  S.current=e; S.answered++;
+  S.current=e;
+  tastenBeschriften();
   const midi=e.m;
   const showStaff = (S.mode==="lesen");
   document.getElementById("staff").style.display=showStaff?"block":"none";
@@ -384,7 +406,7 @@ function startQuestion(){
   if(S.mode==="hoeren") setTimeout(()=>playNote(midi,0,1.3,.45),260);
   if(S.diff==="einsteiger"){           // Einsteiger-Tipp: Zielnote ab 5s pulsieren lassen
     const kb_=document.getElementById("kb");
-    setTimeout(()=>{ if(!S.locked&&S.current){ const k=kb_.querySelector(`[data-midi="${S.current.m}"]`);
+    setTimeout(()=>{ if(gen===S.gen&&!S.locked&&S.current){ const k=kb_.querySelector(`[data-midi="${S.current.m}"]`);
       if(k) k.classList.add("hint"); } },5000);
   }
 }
@@ -431,9 +453,10 @@ function answer(midi){
   const cur=S.current, target=cur.m;
   const ok = (midi===target);
   S.locked=true;
+  if(S.ersteAntwort){ S.ersteAntwort=false; if(!S.wiederholung){ S.gefragt++; if(ok) S.anhieb++; } }
+  const gen=S.gen, weiter=ms=>setTimeout(()=>{ if(gen===S.gen) startQuestion(); },ms);
   playNote(midi,0,.9,.4);
   if(ok){
-    S.hitsFirst=S.hitsFirst||false;
     flash(midi,"flash-ok"); sfxOk();
     S.streak++;
     const fast=(Date.now()-S.qStart<3000)?5:0;
@@ -447,20 +470,20 @@ function answer(midi){
     const nl=Math.min(4,1+Math.floor(S.correctTotal/every));
     if(nl>S.level){ S.level=nl; msg=`<b>Stufe ${S.level}!</b> Jetzt kommen neue Töne dazu.`; confetti(); }
     else if(S.streak%5===0) confetti();
-    setFeedback(msg+" Gemeint war <b>"+entryName(cur)+"</b>.","",  "😄","fok");
-    setTimeout(startQuestion,950);
+    setFeedback(msg+" Das war <b>"+zeigName(cur)+"</b>.","",  "😄","fok");
+    weiter(950);
   }else{
     S.streak=0;
     flash(midi,"flash-bad"); sfxBad();
     setTimeout(()=>{ flash(target,"flash-ok"); playNote(target,.05,1.1,.4); },520);
-    setFeedback(`Das war <b>${entryName(mkEntry(midi))}</b> — gespielt hat <b>${entryName(cur)}</b>. Schau, wo sie liegt.`,"","😅","fbad");
+    setFeedback(`Du hast <b>${zeigName(mkEntry(midi))}</b> gespielt, gesucht war <b>${zeigName(cur)}</b>. Schau, wo sie liegt.`,"","😅","fbad");
     if(S.mode==="hoeren"){         // Lerneffekt: Zielnote im System zeigen
       document.getElementById("staff").style.display="block";
       document.getElementById("earbox").style.display="none";
     }
     renderStaff(cur);
     S.repeat=cur;                  // gleiche Note gleich nochmal
-    setTimeout(startQuestion,2100);
+    weiter(2100);
   }
   updateHud(); save(); renderStats();
   return ok;
@@ -475,31 +498,36 @@ function updateHud(){
 }
 function renderStats(){
   document.getElementById("stats").textContent =
-    S.answered? `Beim ersten Versuch getroffen: ${S.hitsFirstCount()}/${S.answered}` : "";
+    S.gefragt? `Auf Anhieb richtig: ${S.anhieb} von ${S.gefragt}` : "";
 }
-// firstTry-Zaehler separat (hits nur fuer Statistik-Eintrag gesamt)
-let ftHits=0;
-S.hitsFirstCount=()=>ftHits;
-const _answer=answer;
-function submit(m){ // Klick-/Tastatur-Eingang
-  const before=S.locked;
-  const r=_answer(m);
-  if(r===true && !before) ftHits++;
-  updateHud(); renderStats();
+function submit(m){ answer(m); }   // Klick-/Tastatur-Eingang
+// Computertastatur (deutsches Layout): A S D F G H J K L Ö Ä = weisse Tasten, W E R T Z U I O P Ü = schwarze dazwischen.
+// Die Reihe beginnt bei der tiefsten Taste des aktuellen Tonbereichs, damit alle gefragten Toene erreichbar sind.
+const WMAP=["a","s","d","f","g","h","j","k","l","ö","ä"];
+const BGAP={w:0,e:1,r:2,t:3,z:4,u:5,i:6,o:7,p:8,"ü":9};
+function tastenBelegung(){
+  const [lo,hi]=kbRange(), whites=[];
+  for(let m=lo;m<=hi;m++) if(isWhite(m)) whites.push(m);
+  const tief=DIFFS[S.diff].ranges[S.clef][S.level-1][0];
+  let start=whites.findIndex(m=>m>=tief); if(start<0) start=0;
+  start=Math.max(0,Math.min(start,whites.length-WMAP.length));
+  const belegung={};
+  WMAP.forEach((b,i)=>{ const m=whites[start+i]; if(m!=null) belegung[b]=m; });
+  for(const b in BGAP){ const w1=whites[start+BGAP[b]], w2=whites[start+BGAP[b]+1];
+    if(w1!=null && w2!=null && w2-w1===2 && !(S.diff==="einsteiger")) belegung[b]=w1+1; }
+  return belegung;
+}
+function tastenBeschriften(){
+  const bel=tastenBelegung();
+  document.querySelectorAll("#kb [data-taste]").forEach(k=>k.removeAttribute("data-taste"));
+  for(const b in bel){ const k=keyByMidi(bel[b]); if(k) k.dataset.taste=b; }
 }
 document.addEventListener("keydown",ev=>{
-  if(ev.repeat) return;
-  const WMAP=["a","s","d","f","g","h","j","k"];   // weisse Tasten von links
-  const BGAP={w:0,e:1,r:2,t:3,z:4,u:5,i:6};       // schwarze Taste im Weisstasten-Spalt
-  const k=ev.key.toLowerCase();
-  const [lo,hi]=kbRange();
-  const whites=[]; for(let m=lo;m<=hi;m++) if(isWhite(m)) whites.push(m);
-  const wi=WMAP.indexOf(k);
-  if(wi>=0 && wi<whites.length){ submit(whites[wi]); return; }
-  if(k in BGAP){
-    const w1=whites[BGAP[k]], w2=whites[BGAP[k]+1];
-    if(w1!=null && w2!=null && w2-w1===2) submit(w1+1);
-  }
+  if(ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  const m=tastenBelegung()[ev.key.toLowerCase()];
+  if(m==null) return;
+  document.getElementById("kb").classList.add("pc");          // ab jetzt Buchstaben auf den Tasten zeigen
+  ev.preventDefault(); submit(m);
 });
 
 // ---------------- Einstellungen ----------------
@@ -532,8 +560,8 @@ document.getElementById("diffSeg").addEventListener("click",ev=>{
   syncSharpCtl(); buildKb(); S.level=Math.min(S.level,4); startQuestion();
 });
 document.getElementById("neuBtn").addEventListener("click",()=>{
-  S.score=0;S.streak=0;S.level=1;S.correctTotal=0;S.answered=0;S.hitsFirst=0;ftHits=0;
-  updateHud();startQuestion();
+  S.score=0;S.streak=0;S.level=1;S.correctTotal=0;S.gefragt=0;S.anhieb=0;
+  updateHud();renderStats();startQuestion();
 });
 document.getElementById("replay").addEventListener("click",()=>{
   if(S.current!=null) playNote(S.current.m,0,1.3,.45);

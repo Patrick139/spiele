@@ -111,6 +111,9 @@
   .hub-mampfi { width: clamp(86px, 24vw, 140px); }
   .leicht { margin: 6px 0 -4px; font-size: 15px; color: var(--sanft); font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
   .karte.orange { --f: #ffc78f; --d: #e8964a; } .karte.rosa { --f: #ffc4d6; --d: #e58aa3; } .karte.lila { --f: #dccbff; --d: #a58be6; }
+  .karte.tuerkis { --f: #a6ecdf; --d: #4fbfa8; }
+  @media (min-width: 561px) { .karten:not(.klein) { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; } }
+  @media (min-width: 760px) { .karten:not(.klein) { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 760px; } }
   .karten.klein .karte { min-height: 112px; padding: 10px 6px; } .karten.klein .karte .bild { font-size: 38px; } .karten.klein .karte b { font-size: 15px; }
   .karten.klein .karte .buchst { height: 30px; }
   .mini-m { display: inline-block; width: 64px; vertical-align: bottom; }
@@ -331,6 +334,7 @@
     <button class="karte orange" id="kBauen"><span class="bild">🧩</span><span class="buchst" id="kBauenSvg"></span><b>Wörter bauen</b><small class="sterne" data-spiel="bauen"></small></button>
     <button class="karte rosa" id="kFuettern"><span class="bild"><span id="fuMini" class="mini-m"></span>🍪</span><b>Mampfi füttern</b><small class="sterne" data-spiel="fuettern"></small></button>
     <button class="karte lila" id="kUhr"><span class="bild">🕒</span><b>Uhr</b><small class="sterne" data-spiel="uhr"></small></button>
+    <button class="karte tuerkis" id="kNoten"><span class="bild">🎼</span><b>Noten</b><small>lesen und hören</small></button>
   </div>
   <h2 class="leicht">Leicht</h2>
   <div class="karten klein">
