@@ -83,7 +83,7 @@ function gefahrenSchritt(z, dt) {
   }
 }
 
-function dienerAnzahl(z) {
+function bossDienerAnzahl(z) {   // eigener Name: gegner2.js hat dienerAnzahl(z, g) fuer den Beschwoerer, gleiche Namen ueberschreiben sich
   var n = 0;
   for (var i = 0; i < z.gegner.length; i++) if (!z.gegner[i].tot && z.gegner[i].art !== "ambros") n++;
   return n;
@@ -144,7 +144,7 @@ function bossAngriff(g, z, sp, d) {
   if (g.stufe >= 2) opts.push("ansturm", "ring");
   if (g.stufe >= 3) opts.push("ausbruch", "ausbruch");
   var wahl;
-  if (g.ruf <= 0 && dienerAnzahl(z) < BOSS_DIENER_MAX) wahl = "ruf";
+  if (g.ruf <= 0 && bossDienerAnzahl(z) < BOSS_DIENER_MAX) wahl = "ruf";
   else {
     var frei = opts.filter(function (o) { return o !== g.letzter; });
     wahl = (frei.length ? frei : opts)[Math.floor(Math.random() * (frei.length ? frei.length : opts.length))];

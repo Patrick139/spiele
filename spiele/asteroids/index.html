@@ -2,6 +2,8 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../../icon.svg" type="image/svg+xml">
 <title>ASTEROIDS</title>
 <style>
   html,body{margin:0;padding:0;background:#05060a;height:100%;}
@@ -47,10 +49,10 @@ ctx.scale(DPR, DPR);
 /* ---------- Zustand ---------- */
 let state = 'title';           // title | playing | dying | gameover
 let score = 0, lives = 3, level = 1, nextExtra = CFG.EXTRA_LIFE;
-let high = parseInt(localStorage.getItem('asteroids_high') || '0', 10);
+let high = 0; try { high = parseInt(localStorage.getItem('asteroids_high') || '0', 10) || 0; } catch (e) {}
 let ship = null, rocks = [], bullets = [], ufo = null, particles = [];
 let ufoTimer = 0, deathTimer = 0, banner = null, fireCd = 0, hyperCd = 0;
-let thrusting = false, auto = true;
+let thrusting = false, auto = true, paused = false, overLock = 0;
 const keys = {};
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -133,7 +135,7 @@ function addParticles(x, y, n, color, speed, life) {
 }
 function fire() {
   const nose = {x: ship.x + Math.cos(ship.a) * 14, y: ship.y + Math.sin(ship.a) * 14};
-  bullets.push({x: nose.x, y: nose.y, vx: nose.vx !== undefined ? 0 : 0, vy: 0, life: CFG.BULLET_LIFE, owner: 'ship'});
+  bullets.push({x: nose.x, y: nose.y, vx: 0, vy: 0, life: CFG.BULLET_LIFE, owner: 'ship'});
   const b = bullets[bullets.length - 1];
   b.vx = Math.cos(ship.a) * CFG.BULLET_V + ship.vx * 0.4;
   b.vy = Math.sin(ship.a) * CFG.BULLET_V + ship.vy * 0.4;
@@ -173,6 +175,9 @@ function splitRock(rock, idx) {
   if (rock.size > 1) {
     for (let k = 0; k < 2; k++) rocks.push(makeRock(rock.x + rand(-6, 6), rock.y + rand(-6, 6), rock.size - 1));
   }
+  checkExtra();
+}
+function checkExtra() {
   if (score >= nextExtra) { nextExtra += CFG.EXTRA_LIFE; lives++; banner = {text: 'EXTRA LIFE', t: 1.5}; }
 }
 function killShip() {
@@ -185,12 +190,12 @@ function killShip() {
 }
 function respawn() { ship = makeShip(); state = 'playing'; }
 function gameOver() {
-  state = 'gameover';
-  if (score > high) { high = score; localStorage.setItem('asteroids_high', String(high)); }
+  state = 'gameover'; overLock = 0.9;      // kurze Sperre: wer noch die Leertaste haemmert, startet nicht sofort neu
+  if (score > high) { high = score; try { localStorage.setItem('asteroids_high', String(high)); } catch (e) {} }
 }
 function startGame() {
   score = 0; lives = 3; level = 1; nextExtra = CFG.EXTRA_LIFE;
-  rocks = []; bullets = []; particles = []; ufo = null; ufoTimer = rand(7, 12);
+  rocks = []; bullets = []; particles = []; ufo = null; ufoTimer = rand(7, 12); paused = false; fireCd = 0.25; hyperCd = 0;
   ship = makeShip(); state = 'playing'; banner = {text: 'LEVEL 1', t: 1.5};
   spawnWave();
 }
@@ -201,6 +206,7 @@ function wrap(o) {
   if (o.y < 0) o.y += H; else if (o.y >= H) o.y -= H;
 }
 function update(dt) {
+  if (overLock > 0) overLock -= dt;
   if (state === 'playing' && ship) {
     if (keys['ArrowLeft'] || keys['KeyA']) ship.a -= CFG.ROT * dt;
     if (keys['ArrowRight'] || keys['KeyD']) ship.a += CFG.ROT * dt;
@@ -265,7 +271,7 @@ function update(dt) {
       if (!hit && ufo && Math.hypot(b.x - ufo.x, b.y - ufo.y) < ufo.r + 3) {
         score += ufo.small ? 300 : 200;
         addParticles(ufo.x, ufo.y, 24, '#8effc0', 260, 0.7);
-        sfxBoom(3); ufo = null; hit = true;
+        sfxBoom(3); ufo = null; hit = true; checkExtra();
       }
       if (hit) bullets.splice(i, 1);
     }
@@ -390,11 +396,21 @@ function render() {
       'PFEILE / WASD  drehen + schubsen',
       'LEERTASTE      schießen',
       'H              Hyperraum',
+      'P              Pause',
       'M              Ton aus/an' + (muted ? '  (AUS)' : ''),
       '',
       'LEERTASTE = START   —   REKORD: ' + high,
     ];
     lines.forEach((t, i) => ctx.fillText(t, W / 2, H / 2 - 10 + i * 28));
+    noGlow();
+  }
+  if (paused) {
+    ctx.fillStyle = 'rgba(5,6,10,0.55)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.font = 'bold 44px "Courier New",monospace';
+    ctx.fillStyle = '#dff3ff'; glow('#5fb8ff', 18);
+    ctx.fillText('PAUSE', W / 2, H / 2 - 20);
+    ctx.font = '18px "Courier New",monospace'; glow('#5fb8ff', 8);
+    ctx.fillText('P = weiter', W / 2, H / 2 + 40);
     noGlow();
   }
 }
@@ -408,10 +424,13 @@ window.addEventListener('keydown', (e) => {
     muted = !muted;
     if (master) master.gain.value = muted ? 0 : 0.5;
   }
-  if (e.code === 'KeyH') hyperspace();
-  if ((e.code === 'Space' || e.code === 'Enter') && (state === 'title' || state === 'gameover')) startGame();
+  if (e.code === 'KeyP' && !e.repeat && (state === 'playing' || state === 'dying')) paused = !paused;
+  if (e.code === 'KeyH' && !paused) hyperspace();
+  if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat && overLock <= 0 && (state === 'title' || state === 'gameover')) startGame();
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+// Fenster verliert den Fokus: Tasten loslassen (sonst schiebt das Schiff weiter) und pausieren
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'playing' || state === 'dying') paused = true; });
 
 /* ---------- Hauptschleife ---------- */
 let last = performance.now(), acc = 0;
@@ -419,8 +438,9 @@ function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (auto) {
     acc += dt;
+    if (paused) acc = 0;
     while (acc >= 1 / 60) { update(1 / 60); acc -= 1 / 60; }
-    thrustSound(thrusting && state === 'playing');
+    thrustSound(thrusting && state === 'playing' && !paused);
   }
   render();
   requestAnimationFrame(loop);
