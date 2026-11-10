@@ -1,7 +1,7 @@
 {
   "name": "Spielesammlung",
   "short_name": "Spiele",
-  "description": "Klassiker zu zweit am Handy: Tetris mit Eiern. Ohne Werbung, ohne Server.",
+  "description": "Spielesammlung: Tetris zu zweit, Lernspiele für Kinder, Gitarre, Snake und mehr. Ohne Werbung, ohne Server.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",

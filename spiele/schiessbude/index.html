@@ -2,11 +2,13 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<link rel="icon" href="../../icon.svg" type="image/svg+xml">
 <title>Schießbude</title>
 <style>
   html,body{margin:0;padding:0;background:#0b0e1a;height:100%;overflow:hidden}
   #wrap{display:flex;align-items:center;justify-content:center;height:100%}
-  canvas{width:100%;height:auto;max-width:1280px;max-height:100vh;cursor:none;display:block;
+  canvas{width:100%;height:auto;max-width:1280px;max-height:100vh;cursor:none;display:block;touch-action:none;
          box-shadow:0 0 60px rgba(0,0,0,.8)}
 </style>
 </head>
@@ -55,6 +57,8 @@ let rekord = 0; try { rekord = +localStorage.getItem(CFG.REKORD_KEY) || 0; } cat
 let bonus = [];               // Schild +25, Vogelscheuche -20
 let lastTs = 0, shake = 0, flash = 0;
 let targetSeq = 0;
+let endeSperre = 0;            // kurz nach Rundenende startet ein Klick noch keine neue Runde
+const MUN_X = 170;             // Kugelanzeige beginnt rechts vom Knopf "‹ Spiele" (lag vorher darunter)
 
 /* ------------------------------- Bild ----------------------------------- */
 const zielImg = new Image();
@@ -113,7 +117,9 @@ function spawnTarget(layer) {
   };
   if (boden) {
     t.y = (layer === "vorne") ? rnd(560, 600) : rnd(455, 480);   // auf Zaun-/Bodenlinie
+    t.x = rnd(90, CFG.BREITE - 90);                              // im Bild (stand frueher ausserhalb und kam nie herein)
     t.vx = 0; t.hopT = rnd(0, t.hop);
+    t.fade = 0; t.bleibt = rnd(2.5, 4.5);                        // taucht auf, sitzt kurz, verschwindet wieder
   }
   targets.push(t);
 }
@@ -147,7 +153,7 @@ function popup(x, y, text, farbe) { popups.push({ x, y, text, farbe, t: 0 }); }
 function shootAt(px, py) {
   if (state !== "play") return null;
   if (reloading > 0) return "reloading";
-  if (ammo <= 0) { snd("leer"); popup(px, py - 20, "Nachladen! (R / Rechtsklick)", "#ffd23f"); return "empty"; }
+  if (ammo <= 0) { snd("leer"); startReload(); return "empty"; }   // leer: der naechste Klick/Tipp laedt nach
   ammo--; snd("schuss"); flash = 0.06;
   // Ziele: vorne (groß) zuerst prüfen, damit Überlappung eindeutig ist
   const order = ["vorne", "mitte", "hinten"];
@@ -192,7 +198,7 @@ function startRound() {
   try { ac(); } catch (e) {}
 }
 function endRound() {
-  state = "end";
+  state = "end"; endeSperre = performance.now() + 900;
   if (score > rekord) { rekord = score; newRecord = true; try { localStorage.setItem(CFG.REKORD_KEY, String(rekord)); } catch (e) {} }
   snd("ende");
 }
@@ -230,7 +236,10 @@ function step(dt) {
     if (t.dead) { t.fade -= dt * 3; if (t.fade <= 0) targets.splice(i, 1); continue; }
     if (t.boden) {
       t.hopT -= dt;
-      if (t.hopT <= 0) { t.hopT = t.hop; t.x += rnd(-8, 8); }
+      if (t.hopT <= 0) { t.hopT = t.hop; t.x = Math.max(60, Math.min(CFG.BREITE - 60, t.x + rnd(-8, 8))); }
+      t.bleibt -= dt;
+      if (t.bleibt <= 0) { t.fade -= dt * 3; t.alive = false; if (t.fade <= 0) targets.splice(i, 1); continue; }
+      if (t.fade < 1) t.fade = Math.min(1, t.fade + dt * 4);
     } else {
       t.x += t.vx * dt;
       t.y += Math.sin(windRad * 2 + t.phase) * CFG.WACKEL_AMPL * dt;
@@ -411,7 +420,7 @@ function drawHUD() {
   ctx.fillText("Rekord: " + rekord, CFG.BREITE - 18, 30);
   // Munition
   for (let i = 0; i < CFG.MUNITION; i++) {
-    const x = 24 + i * 26, y = CFG.HOEHE - 26;
+    const x = MUN_X + i * 26, y = CFG.HOEHE - 26;
     ctx.fillStyle = i < ammo ? "#ffd23f" : "rgba(255,255,255,0.18)";
     ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
   }
@@ -423,9 +432,9 @@ function drawHUD() {
     ctx.fillRect(CFG.BREITE / 2 - 100, CFG.HOEHE - 50, 200 * (1 - reloading / CFG.NACHLADE_ZEIT), 10);
   } else if (ammo === 0) {
     ctx.textAlign = "center"; ctx.fillStyle = "#ff6b6b"; ctx.font = "bold 22px sans-serif";
-    ctx.fillText("LEER — R oder Rechtsklick zum Nachladen", CFG.BREITE / 2, CFG.HOEHE - 60);
+    ctx.fillText("LEER — Klick / Tippen lädt nach", CFG.BREITE / 2, CFG.HOEHE - 60);
   }
-  if (muted) { ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "16px sans-serif"; ctx.fillText("🔇 stumm (M)", 18, CFG.HOEHE - 52); }
+  if (muted) { ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "16px sans-serif"; ctx.fillText("🔇 stumm (M)", MUN_X - 10, CFG.HOEHE - 52); }
 }
 function drawCrosshair() {
   const { x, y } = mouse;
@@ -462,14 +471,14 @@ function drawStart() {
   ctx.font = "18px sans-serif"; ctx.fillStyle = "#aab4c8";
   const z = CFG.EBENEN;
   const zeilen = [
-    "Linksklick = Schuss · 8 Schuss · R oder Rechtsklick = Nachladen",
+    "Klick / Tippen = Schuss · 8 Schuss · R, Rechtsklick oder Tipp auf die Kugeln = Nachladen",
     "Hinten klein & schnell: 10 P. · Mitte: 5 P. · Vorne groß & langsam: 2 P.",
     "Schild in der Landschaft: +25 · Vogelscheuche: −20",
-    "Runde: " + CFG.RUNDEN_ZEIT + " s · P = Pause · M = Ton",
+    "Runde: " + CFG.RUNDEN_ZEIT + " s · P = Pause · M = Ton · am Handy quer halten",
   ];
   zeilen.forEach((s, i) => ctx.fillText(s, CFG.BREITE / 2, 290 + i * 30));
   ctx.fillStyle = "#ffd23f"; ctx.font = "bold 26px sans-serif";
-  ctx.fillText("Klick oder Enter zum Starten", CFG.BREITE / 2, 500);
+  ctx.fillText("Klick, Tippen oder Enter zum Starten", CFG.BREITE / 2, 500);
   ctx.fillStyle = "#8a94a8"; ctx.font = "16px sans-serif";
   ctx.fillText("Rekord: " + rekord, CFG.BREITE / 2, 540);
 }
@@ -483,7 +492,7 @@ function drawEnd() {
   ctx.fillStyle = newRecord ? "#9be26a" : "#aab4c8"; ctx.font = "22px sans-serif";
   ctx.fillText(newRecord ? "★ Neuer Rekord! ★" : "Rekord: " + rekord, CFG.BREITE / 2, 345);
   ctx.fillStyle = "#ffd23f"; ctx.font = "bold 24px sans-serif";
-  ctx.fillText("Klick oder Enter für neue Runde", CFG.BREITE / 2, 430);
+  ctx.fillText("Klick, Tippen oder Enter für neue Runde", CFG.BREITE / 2, 430);
 }
 function drawPause() {
   overlayBox(420, 160);
@@ -524,13 +533,16 @@ function canvasPos(ev) {
   const r = cv.getBoundingClientRect();
   return { x: (ev.clientX - r.left) * (CFG.BREITE / r.width), y: (ev.clientY - r.top) * (CFG.HOEHE / r.height) };
 }
-cv.addEventListener("mousemove", ev => { mouse = canvasPos(ev); });
-cv.addEventListener("mousedown", ev => {
-  ac();
+cv.addEventListener("pointermove", ev => { mouse = canvasPos(ev); });
+cv.addEventListener("pointerdown", ev => {
+  try { ac(); } catch (e) {}
   if (ev.button === 0) {
-    if (state === "start" || state === "end") { startRound(); return; }
-    if (state === "pause") return;
-    const p = canvasPos(ev); mouse = p; shootAt(p.x, p.y);
+    if (state === "start") { startRound(); return; }
+    if (state === "end") { if (performance.now() > endeSperre) startRound(); return; }
+    if (state === "pause") { if (ev.pointerType !== "mouse") { state = "play"; lastTs = 0; } return; }
+    const p = canvasPos(ev); mouse = p;
+    if (p.x > MUN_X - 20 && p.x < MUN_X + CFG.MUNITION * 26 && p.y > CFG.HOEHE - 52) { startReload(); return; }   // Tipp auf die Kugeln unten links
+    shootAt(p.x, p.y);
   } else if (ev.button === 2) {
     startReload();
   }

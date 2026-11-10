@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<link rel="icon" href="../../icon.svg" type="image/svg+xml">
 <title>SNAKE — besser als Nokia</title>
 <style>
   :root {
@@ -84,7 +85,7 @@
     <span>REKORD <b id="hiscore">0</b></span>
     <span>LEVEL <b id="level">1</b></span>
   </div>
-  <div class="keys">
+  <div class="keys" id="keys">
     <kbd>&#8592;</kbd> <kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8594;</kbd> oder <kbd>W A S D</kbd> &nbsp;&middot;&nbsp;
     <kbd>Space</kbd> Pause &nbsp;&middot;&nbsp; <kbd>M</kbd> Ton &nbsp;&middot;&nbsp; <kbd>Enter</kbd> Neu
   </div>
@@ -108,10 +109,14 @@
 
   // ---------- Zustand ----------
   var state = "ready";          // ready | running | paused | over | win
-  var snake, dir, queue, food, score, level, speedMs, acc, last, grow, blink;
+  var snake, dir, queue, food, score, level, speedMs, acc, last, grow;
   var hiscore = 0;
   try { hiscore = parseInt(localStorage.getItem("snake.hiscore") || "0", 10) || 0; } catch (e) {}
   var muted = false;
+  var TOUCH = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+  var sperreBis = 0;            // kurz nach dem Tod startet Wischen/Tippen/Pfeiltaste noch keine neue Runde
+  function darfStarten() { return state === "ready" || ((state === "over" || state === "win") && performance.now() > sperreBis); }
+  if (TOUCH) document.getElementById("keys").textContent = "Wischen lenkt · Tippen startet · zwei Finger: Pause";
 
   function reset() {
     var cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2);
@@ -119,7 +124,7 @@
     dir = {x: 1, y: 0};
     queue = [];
     grow = 0;
-    score = 0; level = 1; speedMs = 150; acc = 0; last = 0; blink = 0;
+    score = 0; level = 1; speedMs = 150; acc = 0; last = 0;
     placeFood();
     syncHud();
   }
@@ -160,7 +165,9 @@
     var d = DIRS[e.code];
     if (d) {
       e.preventDefault();
-      if (state === "ready" || state === "over" || state === "win") { reset(); state = "running"; }
+      if (e.repeat) return;
+      if (state === "over" || state === "win") { if (!darfStarten()) return; reset(); state = "running"; }
+      else if (state === "ready") { reset(); state = "running"; }
       turn(d);
       return;
     }
@@ -168,8 +175,7 @@
       e.preventDefault();
       if (state === "running") state = "paused";
       else if (state === "paused") state = "running";
-      else if (state === "ready") { reset(); state = "running"; }
-      else if (state === "over" || state === "win") { reset(); state = "running"; }
+      else if (darfStarten()) { reset(); state = "running"; }
     } else if (e.code === "Enter" || e.code === "KeyR") {
       reset(); state = "running";
     } else if (e.code === "KeyM") {
@@ -178,27 +184,38 @@
   });
 
   // Touch: Wischen
-  var tx = 0, ty = 0;
-  cv.addEventListener("touchstart", function (e) {
-    tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+  // Gilt auf dem ganzen Bildschirm und schon waehrend der Bewegung (nicht erst beim Loslassen):
+  // nach 24 px in eine Richtung wird gelenkt, der Finger darf fuer die naechste Kurve liegen bleiben.
+  var tx = 0, ty = 0, gewischt = false, SCHWELLE = 24;
+  function startOderWeiter() {
+    if (state === "paused") state = "running";
+    else if (darfStarten()) { reset(); state = "running"; }
+  }
+  document.addEventListener("touchstart", function (e) {
+    if (e.touches.length === 2 && state === "running") { state = "paused"; gewischt = true; return; }
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY; gewischt = false;
   }, {passive: true});
-  cv.addEventListener("touchend", function (e) {
-    var dx = e.changedTouches[0].clientX - tx;
-    var dy = e.changedTouches[0].clientY - ty;
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
-      if (state !== "running") { reset(); state = "running"; }
-      return;
-    }
+  document.addEventListener("touchmove", function (e) {
+    if (e.touches.length !== 1) return;
+    var dx = e.touches[0].clientX - tx, dy = e.touches[0].clientY - ty;
+    if (Math.abs(dx) < SCHWELLE && Math.abs(dy) < SCHWELLE) return;
     var d = Math.abs(dx) > Math.abs(dy)
       ? {x: dx > 0 ? 1 : -1, y: 0}
       : {x: 0, y: dy > 0 ? 1 : -1};
-    if (state === "ready" || state === "over" || state === "win") { reset(); state = "running"; }
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY; gewischt = true;
+    if (state !== "running") { if (state === "paused" || !darfStarten()) { startOderWeiter(); return; } reset(); state = "running"; }
     turn(d);
+  }, {passive: true});
+  var letzteBeruehrung = -1e9;
+  document.addEventListener("touchend", function (e) {
+    letzteBeruehrung = performance.now();
+    if (!gewischt && e.touches.length === 0 && !(e.target && e.target.closest && e.target.closest("a"))) startOderWeiter();
   }, {passive: true});
 
   cv.addEventListener("click", function () {
-    if (state !== "running") { reset(); state = "running"; }
+    if (performance.now() - letzteBeruehrung > 600) startOderWeiter();   // Mausklick; der nachgereichte Klick eines Tipps zaehlt nicht doppelt
   });
+  document.addEventListener("visibilitychange", function () { if (document.hidden && state === "running") state = "paused"; });
 
   // ---------- Ton ----------
   var ac = null;
@@ -240,7 +257,7 @@
       beep(660 + level * 30, 60);
       if (grow > 0) { grow--; } else { snake.pop(); }
       placeFood();
-      if (!food) { state = "win"; saveScore(); syncHud(); return; }
+      if (!food) { state = "win"; sperreBis = performance.now() + 700; saveScore(); syncHud(); return; }
       syncHud();
     } else {
       snake.pop();
@@ -248,7 +265,7 @@
   }
 
   function die() {
-    state = "over";
+    state = "over"; sperreBis = performance.now() + 700;
     beep(160, 200, 0.06);
     setTimeout(function () { beep(110, 300, 0.06); }, 180);
     saveScore(); syncHud();
@@ -283,8 +300,7 @@
 
     // Futter: blinkender Nokia-Koeder
     if (food && state === "running") {
-      blink = (blink + 1) % 16;
-      if (blink < 11) drawFood(food.x, food.y);
+      if (performance.now() % 270 < 185) drawFood(food.x, food.y);   // nach Zeit, nicht nach Bildern (120-Hz-Displays blinkten doppelt so schnell)
     } else if (food) {
       drawFood(food.x, food.y);
     }
@@ -308,10 +324,10 @@
     }
     drawEyes();
 
-    if (state === "ready")   overlay("SNAKE II", "Los geht's mit einer Pfeiltaste");
-    if (state === "paused")  overlay("PAUSE", "Space weiter");
-    if (state === "over")    overlay("GAME OVER", "Enter oder Klick: neu");
-    if (state === "win")     overlay("SIEG!", "Feld voll — Enter: neu");
+    if (state === "ready")   overlay("SNAKE II", TOUCH ? "Los geht's: wischen oder tippen" : "Los geht's mit einer Pfeiltaste");
+    if (state === "paused")  overlay("PAUSE", TOUCH ? "Tippen: weiter" : "Space weiter");
+    if (state === "over")    overlay("GAME OVER", (TOUCH ? "Tippen: neu" : "Enter oder Klick: neu") + " · Punkte " + score);
+    if (state === "win")     overlay("SIEG!", "Feld voll — " + (TOUCH ? "Tippen: neu" : "Enter: neu"));
   }
 
   function drawFood(x, y) {

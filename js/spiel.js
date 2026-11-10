@@ -226,7 +226,15 @@ function einrichten() {
   el("bZurueck3").onclick = function () { VERB.scanStopp(); VERB.schliessen(); zeige("tmenu"); };
   el("bUebernehmen").onclick = einUebernehmen;
   el("bKamera").onclick = kameraStarten;
-  el("bKopieren").onclick = function () { var t = el("zeigText"); t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand("copy"); } el("zeigStatus").textContent = "Kopiert."; };
+  el("bKopieren").onclick = function () {
+    var t = el("zeigText"); t.select();
+    function alt() {                       // aeltere Browser oder Zwischenablage gesperrt
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+      el("zeigStatus").textContent = ok ? "Kopiert." : "Kopieren ging nicht. Bitte den Code markieren und selbst kopieren.";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(function () { el("zeigStatus").textContent = "Kopiert."; }, alt);
+    else alt();
+  };
   el("bTeilen").onclick = function () { var t = el("zeigText").value; if (navigator.share) navigator.share({ text: t }).catch(function () {}); else el("bKopieren").onclick(); };
   el("bNochmal").onclick = function () {
     if (S.modus === "allein") { neueRunde((Math.random() * 4294967296) >>> 0, "allein"); return; }
