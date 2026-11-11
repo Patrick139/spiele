@@ -52,7 +52,11 @@ Wurden bestehende Tondateien neu erzeugt: in `sw.js` (`TON`) und in `js/kern.js`
 
 ## Stand der Inhalte
 
-- A1 Teil 1: 12 Lektionen, 307 Wörter, 162 Sätze.
-- Offen: A1 Teil 2, A2, B1.
+- A1 Teil 1 (`a1_1.js`): 12 Lektionen, 307 Wörter, 162 Sätze.
+- A1 Teil 2 (`a1_2.js`): 12 Lektionen, Schwerpunkt kurze Sätze aus dem heutigen Alltag.
+- Offen: A2, B1.
+
+Leitlinie für neue Sätze: nur, was man heute wirklich sagt oder hört (Handy, Bestellautomat, Lieferung, Taxi per Adresse,
+Familie, Kind). Keine Lehrbuchsätze über Dinge, die im Alltag kaum mehr vorkommen.
 
 Die koreanischen Texte und die Tondateien sind maschinell erstellt und nicht von einem Muttersprachler geprüft. Fehler lassen sich in der App unter Mehr → Durchsicht markieren.

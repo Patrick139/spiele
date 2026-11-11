@@ -110,7 +110,7 @@ def main():
     if os.path.exists(BERICHT) and not a.alles:
         for z in open(BERICHT, encoding="utf8"):
             t = z.rstrip("\n").split(" | ")
-            if len(t) == 4:
+            if len(t) == 4 and t[0] != "Kennung":
                 bericht[t[0]] = z.rstrip("\n")
     neu = 0
     for d in dinge:
