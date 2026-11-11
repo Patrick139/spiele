@@ -10,8 +10,8 @@ Lernkarten mit Wiederholung nach Intervall, erreichbar über die Lernecke (Kache
 | `js/srs.js` | Wiederholungsabstände (FSRS 4.5, Standardgewichte) |
 | `js/kern.js` | Daten, Lernstand, Ton, Zusammenstellen der Lerneinheit |
 | `js/ansicht.js` | Oberfläche |
-| `daten/a1_*.js`, `daten/a2_*.js` … | Lerninhalte, ein Block je Datei |
-| `daten/grammatik*.js` | Grammatikteil: Grundlagen-Seiten, je Regel genauere Erklärung und Beispiele; eine Datei je Stufe oder Block (`grammatik.js` = A1, `grammatik_a2_1.js` = A2 Teil 1, `grammatik_a2_2.js` = A2 Teil 2) |
+| `daten/a1_*.js`, `daten/a2_*.js`, `daten/b1_*.js` | Lerninhalte, ein Block je Datei |
+| `daten/grammatik*.js` | Grammatikteil: Grundlagen-Seiten, je Regel genauere Erklärung und Beispiele; eine Datei je Stufe oder Block (`grammatik.js` = A1, `grammatik_a2_1.js` = A2 Teil 1, `grammatik_a2_2.js` = A2 Teil 2, `grammatik_b1_1.js` = B1 Teil 1) |
 | `ton/*.mp3` | eine Tondatei je Wort und Satz |
 | `werkzeug/` | Erzeugen der Tondateien |
 
@@ -57,8 +57,9 @@ Wurden bestehende Tondateien neu erzeugt: in `sw.js` (`TON`) und in `js/kern.js`
 - A1 Teil 2 (`a1_2.js`): 12 Lektionen, Schwerpunkt kurze Sätze aus dem heutigen Alltag.
 - A2 Teil 1 (`a2_1.js`): 12 Lektionen (25–36), 275 Wörter, 235 Sätze. Jede Lektion hängt an einer Art, Sätze zu verbinden (weil, aber, wenn, bevor, um zu, schon einmal, dürfen, Beschreibung vor dem Nomen, scheint, als, wem, nicht wahr).
 - A2 Teil 2 (`a2_2.js`): 12 Lektionen (37–48), 302 Wörter, 281 Sätze. Themen: Büro, Termine, Amt, Bank, Arzt, Reise in Korea, Familienfeste, Kindergarten und Schule, Nachrichten schreiben. Grammatik: förmliche Sprache, weiche Fragen und höfliche Bitten, ehrende Formen, Weitersagen.
-- Grammatikteil: 179 Regeln und 9 Grundlagen-Seiten mit 1078 Beispielen.
-- Offen: B1.
+- B1 Teil 1 (`b1_1.js`): 12 Lektionen (49–60), 289 Wörter, 285 Sätze. Sechs Themen zu je zwei Lektionen: Meinung sagen und begründen, Erzählen, Nachrichten und Gesellschaft, Arbeit und Bewerbung, Wohnen und Verträge, Gesundheit und Lebensweise.
+- Grammatikteil: 227 Regeln und 11 Grundlagen-Seiten mit 1378 Beispielen.
+- Offen: B1 Teil 2 (Erziehung und Schule, Reisen und Kultur, Technik und Medien, Gefühle und Beziehungen, Probleme lösen und sich beschweren, Pläne und Zukunft).
 
 Leitlinie für neue Sätze: nur, was man heute wirklich sagt oder hört (Handy, Bestellautomat, Lieferung, Taxi per Adresse,
 Familie, Kind). Keine Lehrbuchsätze über Dinge, die im Alltag kaum mehr vorkommen.
