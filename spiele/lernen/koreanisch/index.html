@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f3eee3">
+<link rel="icon" href="../../../icon.svg" type="image/svg+xml">
+<title>Koreanisch lernen</title>
+<style>
+  :root { --papier:#f3eee3; --karte:#fbf8f1; --tinte:#26221d; --grau:#6d655a; --linie:#d9d0bf; --blau:#1f4e5f; --gut:#2e6b3f; --schlecht:#9c3b2e; --stern:#a8791c;
+    --ko: "Noto Sans KR", "Noto Sans CJK KR", "Apple SD Gothic Neo", "Malgun Gothic", "NanumGothic", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--papier); color: var(--tinte); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  [lang=ko], .ko, .k { font-family: var(--ko); }
+  header { display: flex; align-items: center; justify-content: space-between; max-width: 640px; margin: 0 auto; padding: 10px 16px 0; }
+  header a { color: var(--grau); text-decoration: none; font-size: 14px; }
+  header span { font-weight: 600; letter-spacing: .02em; color: var(--grau); font-size: 14px; }
+  main { max-width: 640px; margin: 0 auto; padding: 4px 16px 96px; }
+  body.lernt main { padding-bottom: 24px; }
+  body.lernt nav, body.lernt header { display: none; }
+  h1 { font-size: 24px; margin: 14px 0 12px; font-weight: 650; }
+  h2 { font-size: 15px; margin: 22px 0 8px; color: var(--grau); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .karte h2 { margin-top: 0; }
+  h3 { font-size: 15px; margin: 16px 0 6px; }
+  p { margin: 8px 0; }
+  .klein { font-size: 13.5px; color: var(--grau); }
+  .karte { background: var(--karte); border: 1px solid var(--linie); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+  .hinweis { border-left: 4px solid var(--blau); }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .haupt, .neben { display: block; width: 100%; padding: 13px 14px; border-radius: 8px; font-weight: 600; margin-top: 10px; text-align: center; }
+  .haupt { background: var(--blau); color: #fff; border: 1px solid var(--blau); }
+  .neben { background: transparent; border: 1px solid var(--linie); color: var(--blau); }
+  .neben.schlecht { color: var(--schlecht); }
+  .link { background: none; border: 0; padding: 6px 0; color: var(--grau); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .knopfzeile { display: flex; gap: 10px; flex-wrap: wrap; } .knopfzeile > * { flex: 1 1 180px; }
+  .zahlen { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 6px; } .zahlen.drei { grid-template-columns: repeat(3, 1fr); }
+  .zahlen b { display: block; font-size: 30px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .zahlen span { font-size: 13px; color: var(--grau); }
+  .balken { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 104px; }
+  .balken div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 12px; color: var(--grau); }
+  .balken i { display: block; width: 70%; max-width: 34px; background: var(--blau); opacity: .75; border-radius: 3px 3px 0 0; margin: 2px 0 4px; }
+  .balken .wert { font-variant-numeric: tabular-nums; color: var(--tinte); }
+  /* Listen */
+  .liste { border: 1px solid var(--linie); border-radius: 10px; background: var(--karte); overflow: hidden; }
+  .zeile { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--linie); background: none; text-align: left; }
+  .liste > :last-child, .liste > :last-child .zeile { border-bottom: 0; }
+  .zeile .mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .zeile .k { font-size: 18px; } .zeile .k small { font-size: 13px; color: var(--grau); margin-left: 6px; }
+  .zeile .d { font-size: 14px; color: var(--grau); }
+  .zeile .rechts { font-size: 13px; color: var(--grau); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lek .nr { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--linie); display: grid; place-items: center; font-size: 13px; color: var(--grau); flex: none; }
+  .lek em { font-style: normal; font-size: 12px; color: var(--blau); }
+  .fort { display: block; height: 4px; background: var(--linie); border-radius: 2px; overflow: hidden; margin-top: 6px; } .fort i { display: block; height: 100%; background: var(--blau); }
+  .spiel { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--linie); background: var(--papier); color: var(--blau); font-size: 12px; padding: 0 0 0 2px; }
+  .stern { flex: none; background: none; border: 0; font-size: 22px; line-height: 1; color: var(--linie); padding: 4px; } .stern.an { color: var(--stern); }
+  .punkt { flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--linie); } .punkt.an { background: var(--gut); border-color: var(--gut); }
+  .notiz p { margin: 4px 0; } .notiz .bsp { color: var(--blau); font-size: 17px; }
+  details.karte .notiz { border-top: 1px solid var(--linie); padding-top: 8px; margin-top: 8px; }
+  /* Lerneinheit */
+  .ekopf { display: flex; align-items: center; gap: 12px; padding-top: 10px; } .ekopf .fort { flex: 1; margin: 0; height: 6px; }
+  .etikett { font-size: 13px; color: var(--grau); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 8px; }
+  .flaeche { background: var(--karte); border: 1px solid var(--linie); border-radius: 12px; padding: 26px 18px; min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; }
+  .flaeche .ko { font-size: 44px; line-height: 1.25; font-weight: 500; word-break: keep-all; } .flaeche .ko.satz { font-size: 27px; line-height: 1.5; }
+  .flaeche .de { font-size: 19px; } .flaeche .de.gross { font-size: 25px; font-weight: 550; }
+  .flaeche .form, .flaeche .wl, .flaeche .zusatz, .flaeche .frage { font-size: 14.5px; color: var(--grau); }
+  .flaeche .form span { font-size: 18px; color: var(--tinte); }
+  .flaeche .zusatz { border: 1px solid var(--linie); border-radius: 20px; padding: 1px 10px; }
+  .flaeche hr { width: 60%; border: 0; border-top: 1px solid var(--linie); margin: 10px 0; }
+  .flaeche .gut { color: var(--gut); } .flaeche .schlecht { color: var(--schlecht); }
+  .leer { display: inline-block; width: 3.2em; border-bottom: 2px solid var(--blau); height: 1em; vertical-align: baseline; }
+  .ton { display: flex; gap: 8px; margin-top: 12px; } .ton button { border: 1px solid var(--linie); background: var(--papier); border-radius: 20px; padding: 6px 14px; font-size: 14px; color: var(--blau); }
+  .wahl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 14px; }
+  .wahl button, .reihe button { border: 1px solid var(--linie); background: var(--papier); border-radius: 8px; padding: 12px 10px; font-size: 20px; }
+  .reihe { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; min-height: 54px; margin-top: 10px; align-items: center; }
+  .reihe.ziel { border-bottom: 2px solid var(--blau); padding-bottom: 10px; } .reihe button:disabled { opacity: .25; }
+  .knoepfe { display: flex; gap: 10px; margin-top: 14px; } .knoepfe button { flex: 1; margin-top: 0; padding: 14px 6px; border-radius: 8px; font-weight: 600; border: 1px solid var(--linie); background: var(--karte); }
+  .knoepfe button small { display: block; font-weight: 400; font-size: 12px; opacity: .8; }
+  .knoepfe .haupt { background: var(--blau); color: #fff; border-color: var(--blau); }
+  .knoepfe .schlecht { color: var(--schlecht); } .knoepfe .gut { background: var(--gut); border-color: var(--gut); color: #fff; } .knoepfe .leicht { color: var(--blau); }
+  .knoepfe.fest { position: sticky; bottom: 76px; }
+  /* Formulare */
+  label { display: block; font-size: 14px; color: var(--grau); margin: 10px 0 0; }
+  input[type=text], input[type=search], input:not([type]), select, textarea { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--linie); border-radius: 8px; background: #fffdf8; font-size: 16px; color: var(--tinte); }
+  label.haken { display: flex; align-items: center; gap: 10px; color: var(--tinte); font-size: 15px; } label.haken input, .zeile input[type=checkbox] { width: 20px; height: 20px; flex: none; accent-color: var(--blau); }
+  .dateiwahl { cursor: pointer; margin-top: 10px; color: var(--blau); font-size: 16px; } .dateiwahl input { display: none; }
+  .reiter { display: flex; border: 1px solid var(--linie); border-radius: 8px; overflow: hidden; margin-bottom: 12px; } .reiter button { flex: 1; padding: 10px; border: 0; background: var(--karte); color: var(--grau); } .reiter .an { background: var(--blau); color: #fff; }
+  summary { font-weight: 600; cursor: pointer; padding: 2px 0; } details[open] summary { margin-bottom: 6px; }
+  .pruef { border-top: 1px solid var(--linie); padding: 4px 0 10px; } .pruef .zeile { border: 0; padding: 8px 0 4px; } .pzeile { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; } .pzeile label { margin: 0; font-size: 14px; } .pzeile input[type=text] { flex: 1 1 200px; width: auto; margin: 0; padding: 7px 10px; font-size: 15px; }
+  textarea { margin-top: 10px; font-size: 14px; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--karte); border-top: 1px solid var(--linie); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; max-width: 160px; padding: 14px 4px 13px; border: 0; background: none; color: var(--grau); font-size: 14.5px; border-top: 3px solid transparent; } nav button.an { color: var(--blau); font-weight: 650; border-top-color: var(--blau); }
+  @media (min-width: 700px) { .flaeche { min-height: 300px; } .flaeche .ko { font-size: 52px; } }
+</style>
+</head>
+<body>
+<header><a href="../index.html">‹ Lernecke</a><span lang="ko">한국어</span></header>
+<main>
+  <section id="v-heute"></section>
+  <section id="v-einheit" hidden></section>
+  <section id="v-lektionen" hidden></section>
+  <section id="v-lektion" hidden></section>
+  <section id="v-abhaken" hidden></section>
+  <section id="v-karten" hidden></section>
+  <section id="v-mehr" hidden></section>
+</main>
+<nav>
+  <button data-akt="nav" data-ziel="heute">Heute</button>
+  <button data-akt="nav" data-ziel="lektionen">Lektionen</button>
+  <button data-akt="nav" data-ziel="karten">Karten</button>
+  <button data-akt="nav" data-ziel="mehr">Mehr</button>
+</nav>
+<script src="js/srs.js"></script>
+<script src="js/kern.js"></script>
+<script src="daten/a1_1.js"></script>
+<script src="js/ansicht.js"></script>
+</body>
+</html>
