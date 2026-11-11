@@ -90,7 +90,21 @@
   .pruef { border-top: 1px solid var(--linie); padding: 4px 0 10px; } .pruef .zeile { border: 0; padding: 8px 0 4px; } .pzeile { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; } .pzeile label { margin: 0; font-size: 14px; } .pzeile input[type=text] { flex: 1 1 200px; width: auto; margin: 0; padding: 7px 10px; font-size: 15px; }
   textarea { margin-top: 10px; font-size: 14px; }
   nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--karte); border-top: 1px solid var(--linie); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
-  nav button { flex: 1; max-width: 160px; padding: 14px 4px 13px; border: 0; background: none; color: var(--grau); font-size: 14.5px; border-top: 3px solid transparent; } nav button.an { color: var(--blau); font-weight: 650; border-top-color: var(--blau); }
+  nav button { flex: 1; max-width: 150px; padding: 14px 2px 13px; border: 0; background: none; color: var(--grau); font-size: 13.5px; border-top: 3px solid transparent; } nav button.an { color: var(--blau); font-weight: 650; border-top-color: var(--blau); }
+  /* Grammatik */
+  .regelknopf { display: block; width: 100%; text-align: left; } .regelknopf b, .regelknopf span { display: block; }
+  .karte > .regelknopf { background: none; border: 0; padding: 0; }
+  .regelknopf .bsp, p.bsp { color: var(--blau); font-size: 17px; margin: 5px 0 0; font-family: var(--ko); }
+  .regelknopf .bsp { text-decoration: underline; text-decoration-color: #b9c9cf; text-underline-offset: 5px; }
+  .weiter { color: var(--blau); font-size: 14px; font-weight: 600; margin-top: 8px; }
+  .regelz b { font-weight: 600; font-size: 15.5px; } .pfeil { color: var(--grau); font-size: 20px; flex: none; }
+  .regeltitel { margin-top: 0; } #v-regel .etikett { margin: 4px 0 2px; }
+  .m { color: var(--blau); background: #e2ebee; border-radius: 3px; padding: 0 2px; font-weight: 600; }
+  .zeile .h { font-size: 13px; color: var(--grau); font-style: italic; }
+  .lang { flex: none; border: 1px solid var(--linie); background: var(--papier); border-radius: 14px; font-size: 12px; padding: 4px 9px; color: var(--grau); }
+  .tabwrap { overflow-x: auto; margin: 10px 0; } table.gt { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--karte); }
+  .gt th, .gt td { border: 1px solid var(--linie); padding: 7px 8px; text-align: left; vertical-align: top; } .gt th { background: #ebe4d4; font-weight: 600; } .gt td { font-family: var(--ko); }
+  .blaettern { display: flex; gap: 10px; margin-top: 6px; } .blaettern button { flex: 1; font-size: 13.5px; font-weight: 500; }
   @media (min-width: 700px) { .flaeche { min-height: 300px; } .flaeche .ko { font-size: 52px; } }
 </style>
 </head>
@@ -102,12 +116,15 @@
   <section id="v-lektionen" hidden></section>
   <section id="v-lektion" hidden></section>
   <section id="v-abhaken" hidden></section>
+  <section id="v-grammatik" hidden></section>
+  <section id="v-regel" hidden></section>
   <section id="v-karten" hidden></section>
   <section id="v-mehr" hidden></section>
 </main>
 <nav>
   <button data-akt="nav" data-ziel="heute">Heute</button>
   <button data-akt="nav" data-ziel="lektionen">Lektionen</button>
+  <button data-akt="nav" data-ziel="grammatik">Grammatik</button>
   <button data-akt="nav" data-ziel="karten">Karten</button>
   <button data-akt="nav" data-ziel="mehr">Mehr</button>
 </nav>
@@ -115,6 +132,7 @@
 <script src="js/kern.js"></script>
 <script src="daten/a1_1.js"></script>
 <script src="daten/a1_2.js"></script>
+<script src="daten/grammatik.js"></script>
 <script src="js/ansicht.js"></script>
 </body>
 </html>

@@ -4,10 +4,11 @@
 // Kennungen: Wort a1-03w5, Satz a1-03s2, eigene Karte e<Zeitstempel>.
 // Lernkarten: <Wort>:r = Koreanisch → Deutsch, <Wort>:p = Deutsch → Koreanisch, <Satz>:s = Satz.
 // Lernstand (localStorage "koreanisch_v1"): karten {Kennung: {s, d, f fällig am Lerntag, l zuletzt, n richtige Wiederholungen, x Fehler}},
-// eigene [], gemerkt {}, pruef {} (Durchsicht), einst {neu, auto, deko, pin}, tage {Lerntag: {neu, wdh}}.
+// eigene [], gemerkt {}, pruef {} (Durchsicht), gram {Regel: Lerntag, an dem sie zuletzt angesehen wurde}, einst {neu, auto, deko, pin}, tage {Lerntag: {neu, wdh}}.
 var KO = {
   SCHLUESSEL: "koreanisch_v1", FASSUNG: 1,
   bloecke: [], dinge: {}, lektionen: {}, zeitVersatz: 0, stand: null, reihenCache: {},
+  lekZahl: 0, gramRoh: null, regeln: [], regel: {}, gbsp: {},        // Grammatik: Rohdaten, Liste aller Seiten, Seite nach Kennung, Beispiele nach Kennung
 
   jetzt: function () { return Date.now() + this.zeitVersatz; },
   heute: function () { return SRS.tagNr(this.jetzt()); },
@@ -17,7 +18,7 @@ var KO = {
     var self = this;
     this.bloecke.push(b);
     b.lektionen.forEach(function (l) {
-      l.block = b.id; l.dinge = [];
+      l.block = b.id; l.dinge = []; l.nr = ++self.lekZahl;      // fortlaufende Lektionsnummer über alle Blöcke
       self.lektionen[l.id] = l;
       (l.w || []).forEach(function (e, i) {
         if (!e) return;
@@ -31,8 +32,52 @@ var KO = {
       });
     });
   },
+  // ---------- Grammatik ----------
+  // Die Grammatikdateien (daten/grammatik*.js) rufen KO.grammatik auf, jede Stufe ihre eigene; mehrere Aufrufe werden zusammengelegt.
+  // Zusammengebaut wird beim Start, wenn alle Lektionen geladen sind.
+  grammatik: function (g) {
+    var r = this.gramRoh || (this.gramRoh = { grund: [], regeln: {} });
+    (g.grund || []).forEach(function (x) { r.grund.push(x); });
+    Object.keys(g.regeln || {}).forEach(function (id) { r.regeln[id] = g.regeln[id]; });
+  },
+  ohneKlammern: function (t) { return t.replace(/[\[\]]/g, ""); },
+  baueGrammatik: function () {
+    var self = this, g = this.gramRoh || { grund: [], regeln: {} };
+    this.regeln = []; this.regel = {}; this.gbsp = {};
+    var beispiele = function (id, liste) {
+      var aus = [];
+      (liste || []).forEach(function (b, i) {
+        if (!b) return;
+        var x = { id: id + "b" + (i + 1), typ: "g", roh: b[0], ko: self.ohneKlammern(b[0]), de: b[1], hin: b[2] || "" };
+        self.gbsp[x.id] = x; aus.push(x);
+      });
+      return aus;
+    };
+    (g.grund || []).forEach(function (r) {
+      var x = { id: r.id, art: "grund", titel: r.titel, kurz: r.kurz, text: r.text || [], tabelle: r.tabelle || null, danach: r.danach || [], siehe: r.siehe || [], bsp: beispiele(r.id, r.bsp) };
+      self.regeln.push(x); self.regel[x.id] = x;
+    });
+    this.bloecke.forEach(function (b) {
+      b.lektionen.forEach(function (l) {
+        (l.notiz || []).forEach(function (n, i) {
+          var id = l.id + "n" + (i + 1), z = (g.regeln || {})[id] || {};
+          var x = { id: id, art: "regel", lek: l.id, titel: n[0], kurz: n[1], kurzBsp: n[2] || "", mehr: z.mehr || "", kv: !!z.kv, verweis: z.verweis || "", bsp: beispiele(id, z.bsp) };
+          self.regeln.push(x); self.regel[id] = x;
+        });
+      });
+    });
+  },
+  // Regel für die Startseite: aus den Lektionen, in denen schon etwas gelernt ist, die am längsten nicht angesehene
+  grammatikVorschlag: function () {
+    var self = this, g = this.stand.gram, kand = this.regeln.filter(function (r) { return r.art === "regel" && self.lektionStand(r.lek).gelernt > 0; }), beste = null;
+    if (!kand.length) kand = this.regeln.filter(function (r) { return r.art === "regel"; });
+    kand.forEach(function (r) { if (!beste || (g[r.id] || 0) < (g[beste.id] || 0)) beste = r; });
+    return beste;
+  },
+
   ding: function (id) {
     if (this.dinge[id]) return this.dinge[id];
+    if (this.gbsp[id]) return this.gbsp[id];
     var e = this.stand.eigene;
     for (var i = 0; i < e.length; i++) if (e[i].id === id) return { id: e[i].id, typ: "w", ko: e[i].ko, de: e[i].de, form: "", zusatz: "", notiz: e[i].notiz || "", eigen: true };
     return null;
@@ -44,7 +89,7 @@ var KO = {
 
   // ---------- Lernstand ----------
   leer: function () {
-    return { v: this.FASSUNG, karten: {}, eigene: [], gemerkt: {}, pruef: {}, tage: {}, einst: { neu: 10, auto: true, deko: true, pin: "" } };
+    return { v: this.FASSUNG, karten: {}, eigene: [], gemerkt: {}, pruef: {}, tage: {}, gram: {}, einst: { neu: 10, auto: true, deko: true, pin: "" } };
   },
   lade: function () {
     var s = null;
@@ -54,7 +99,7 @@ var KO = {
   pruefeStand: function (s) {
     if (!s || typeof s !== "object" || s.v !== this.FASSUNG || typeof s.karten !== "object") return null;
     var l = this.leer();
-    ["eigene", "gemerkt", "pruef", "tage"].forEach(function (k) { if (!s[k] || typeof s[k] !== "object") s[k] = l[k]; });
+    ["eigene", "gemerkt", "pruef", "tage", "gram"].forEach(function (k) { if (!s[k] || typeof s[k] !== "object") s[k] = l[k]; });
     if (!Array.isArray(s.eigene)) s.eigene = [];
     s.einst = Object.assign(l.einst, s.einst || {});
     return s;
@@ -255,7 +300,7 @@ var KO = {
     // alle Tondateien eines Blocks aufs Gerät legen (für unterwegs ohne Netz)
     ladeAlle: function (fortschritt) {
       if (!("caches" in window)) return Promise.reject(new Error("Dieser Browser kann keine Dateien ablegen."));
-      var ids = Object.keys(KO.dinge), fertig = 0, fehler = 0;
+      var ids = Object.keys(KO.dinge).concat(Object.keys(KO.gbsp)), fertig = 0, fehler = 0;
       return caches.open("ko-ton-v1").then(function (c) {
         var naechste = function () {
           if (!ids.length) return Promise.resolve();
