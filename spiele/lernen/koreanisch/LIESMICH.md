@@ -10,8 +10,8 @@ Lernkarten mit Wiederholung nach Intervall, erreichbar über die Lernecke (Kache
 | `js/srs.js` | Wiederholungsabstände (FSRS 4.5, Standardgewichte) |
 | `js/kern.js` | Daten, Lernstand, Ton, Zusammenstellen der Lerneinheit |
 | `js/ansicht.js` | Oberfläche |
-| `daten/a1_*.js` … | Lerninhalte, ein Block je Datei |
-| `daten/grammatik.js` | Grammatikteil: Grundlagen-Seiten, je Regel genauere Erklärung und Beispiele |
+| `daten/a1_*.js`, `daten/a2_*.js` … | Lerninhalte, ein Block je Datei |
+| `daten/grammatik*.js` | Grammatikteil: Grundlagen-Seiten, je Regel genauere Erklärung und Beispiele; eine Datei je Stufe oder Block (`grammatik.js` = A1, `grammatik_a2_1.js` = A2 Teil 1) |
 | `ton/*.mp3` | eine Tondatei je Wort und Satz |
 | `werkzeug/` | Erzeugen der Tondateien |
 
@@ -55,7 +55,9 @@ Wurden bestehende Tondateien neu erzeugt: in `sw.js` (`TON`) und in `js/kern.js`
 
 - A1 Teil 1 (`a1_1.js`): 12 Lektionen, 307 Wörter, 162 Sätze.
 - A1 Teil 2 (`a1_2.js`): 12 Lektionen, Schwerpunkt kurze Sätze aus dem heutigen Alltag.
-- Offen: A2, B1.
+- A2 Teil 1 (`a2_1.js`): 12 Lektionen (25–36), 275 Wörter, 235 Sätze. Jede Lektion hängt an einer Art, Sätze zu verbinden (weil, aber, wenn, bevor, um zu, schon einmal, dürfen, Beschreibung vor dem Nomen, scheint, als, wem, nicht wahr).
+- Grammatikteil: 131 Regeln und 7 Grundlagen-Seiten mit 780 Beispielen.
+- Offen: A2 Teil 2, B1.
 
 Leitlinie für neue Sätze: nur, was man heute wirklich sagt oder hört (Handy, Bestellautomat, Lieferung, Taxi per Adresse,
 Familie, Kind). Keine Lehrbuchsätze über Dinge, die im Alltag kaum mehr vorkommen.

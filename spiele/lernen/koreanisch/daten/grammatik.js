@@ -2,6 +2,7 @@
 //
 // regeln: Schlüssel = Lektion + "n" + Platz der Notiz in der Lektion (a1-03n2 = zweite Notiz von Lektion 3).
 //   mehr: genauere Erklärung · kv: true, wenn die Form davon abhängt, ob das Wort auf Konsonant oder Vokal endet
+//   (kv: "stamm", wenn es auf das Ende des Verbstamms ankommt – der Hinweiskasten zeigt dann Stämme als Beispiel)
 //   bsp:  [Koreanisch, Deutsch, Hinweis (optional)]; eckige Klammern heben die Stelle hervor, um die es geht.
 // grund: Übersichtsseiten. text = Absätze, tabelle = Zeilen (erste Zeile Kopf), danach = Absätze nach der Tabelle,
 //   siehe = Regeln, auf die verwiesen wird.
@@ -404,7 +405,7 @@ KO.grammatik({
       ["오늘은 [흐려요].", "Heute ist es trüb."]
     ] },
     // ---------- Lektion 11 ----------
-    "a1-11n1": { kv: true, mehr: "Der Stamm ist die Grundform ohne 다. Endet er auf Konsonant, folgt 으세요, sonst 세요. Das ist höflich, bleibt aber eine Aufforderung. Mit 좀 oder als -아/어 주세요 wird daraus eine Bitte. Als Frage ehrt dieselbe Endung den Angesprochenen (어디 가세요?).", bsp: [
+    "a1-11n1": { kv: "stamm", mehr: "Der Stamm ist die Grundform ohne 다. Endet er auf Konsonant, folgt 으세요, sonst 세요. Das ist höflich, bleibt aber eine Aufforderung. Mit 좀 oder als -아/어 주세요 wird daraus eine Bitte. Als Frage ehrt dieselbe Endung den Angesprochenen (어디 가세요?).", bsp: [
       ["여기 [보세요].", "Schauen Sie hierher.", "보 endet auf Vokal → 세요"],
       ["이거 [읽으세요].", "Lesen Sie das.", "읽 endet auf Konsonant → 으세요"],
       ["천천히 [가세요].", "Gehen Sie langsam."],
@@ -444,7 +445,7 @@ KO.grammatik({
       ["아무것도 안 [하고 싶어요].", "Ich möchte gar nichts tun."],
       ["그 영화 [보고 싶었어요].", "Den Film wollte ich sehen."]
     ] },
-    "a1-12n2": { kv: true, mehr: "Endet der Stamm auf Vokal, kommt ㄹ unten an die Silbe: 가 → 갈 수 있어요. Endet er auf Konsonant, folgt 을: 먹 → 먹을 수 있어요. Die Form bedeutet Fähigkeit und Möglichkeit. Kürzer für „kann nicht“: 못 + Verb (Lektion 23).", bsp: [
+    "a1-12n2": { kv: "stamm", mehr: "Endet der Stamm auf Vokal, kommt ㄹ unten an die Silbe: 가 → 갈 수 있어요. Endet er auf Konsonant, folgt 을: 먹 → 먹을 수 있어요. Die Form bedeutet Fähigkeit und Möglichkeit. Kürzer für „kann nicht“: 못 + Verb (Lektion 23).", bsp: [
       ["내일 [갈 수 있어요].", "Morgen kann ich kommen.", "가 → 갈"],
       ["매운 음식을 [먹을 수 있어요]?", "Können Sie scharf essen?", "먹 → 먹을"],
       ["혼자 [할 수 있어요].", "Das kann ich allein."],
@@ -482,7 +483,7 @@ KO.grammatik({
       ["앱[으로] 주문했어요.", "Ich habe über die App bestellt.", "앱 hat unten ㅂ → 으로"],
       ["휴대폰[으로] 결제해요.", "Ich zahle mit dem Handy."]
     ] },
-    "a1-13n4": { kv: true, mehr: "Nur für „ich“ und nur für das, was ich selbst entscheide – als Antwort auf die Lage oder den Wunsch des anderen. Stamm auf Vokal: ㄹ unten an die Silbe + 게요 (하 → 할게요). Stamm auf Konsonant: 을게요 (먹 → 먹을게요). Gesprochen klingt es wie [께요].", bsp: [
+    "a1-13n4": { kv: "stamm", mehr: "Nur für „ich“ und nur für das, was ich selbst entscheide – als Antwort auf die Lage oder den Wunsch des anderen. Stamm auf Vokal: ㄹ unten an die Silbe + 게요 (하 → 할게요). Stamm auf Konsonant: 을게요 (먹 → 먹을게요). Gesprochen klingt es wie [께요].", bsp: [
       ["내일 [전화할게요].", "Ich rufe morgen an."],
       ["금방 [갈게요].", "Ich komme gleich."],
       ["이따가 [보낼게요].", "Ich schicke es nachher."],
@@ -627,7 +628,7 @@ KO.grammatik({
       ["정말 [마음에 들어요].", "Es gefällt mir wirklich."]
     ] },
     // ---------- Lektion 19 ----------
-    "a1-19n1": { kv: true, mehr: "Stamm auf Vokal: ㄹ unten an die Silbe (가 → 갈 거예요). Stamm auf Konsonant: 을 거예요 (먹 → 먹을 거예요). Für Pläne und Vermutungen. Der Unterschied zu -(으)ㄹ게요: Das ist eine Zusage an den anderen, 거예요 ein Plan oder eine Vorhersage.", bsp: [
+    "a1-19n1": { kv: "stamm", mehr: "Stamm auf Vokal: ㄹ unten an die Silbe (가 → 갈 거예요). Stamm auf Konsonant: 을 거예요 (먹 → 먹을 거예요). Für Pläne und Vermutungen. Der Unterschied zu -(으)ㄹ게요: Das ist eine Zusage an den anderen, 거예요 ein Plan oder eine Vorhersage.", bsp: [
       ["내일 비가 [올 거예요].", "Morgen wird es regnen.", "오 → 올"],
       ["주말에 영화를 [볼 거예요].", "Am Wochenende schaue ich einen Film."],
       ["저녁에 뭐 [먹을 거예요]?", "Was isst du am Abend?", "먹 → 먹을"],
@@ -635,7 +636,7 @@ KO.grammatik({
       ["곧 [끝날 거예요].", "Es ist bald vorbei."],
       ["괜찮[을 거예요].", "Es wird schon gut gehen."]
     ] },
-    "a1-19n2": { kv: true, mehr: "Mit „wir“ ist es ein Vorschlag, mit „ich“ ein Angebot (soll ich …?). Die Bildung ist dieselbe wie bei -(으)ㄹ 거예요.", bsp: [
+    "a1-19n2": { kv: "stamm", mehr: "Mit „wir“ ist es ein Vorschlag, mit „ich“ ein Angebot (soll ich …?). Die Bildung ist dieselbe wie bei -(으)ㄹ 거예요.", bsp: [
       ["같이 [갈까요]?", "Gehen wir zusammen?"],
       ["뭐 [먹을까요]?", "Was sollen wir essen?"],
       ["여기 [앉을까요]?", "Setzen wir uns hierher?"],
@@ -650,7 +651,7 @@ KO.grammatik({
       ["요즘 [어때요]?", "Wie geht es dir zurzeit?"],
       ["맛이 [어때요]?", "Wie schmeckt es?"]
     ] },
-    "a1-19n4": { kv: true, mehr: "Koreaner sagen selten hart „es ist so“, wenn es nur eine Einschätzung ist. Mit 것 같아요 klingt auch eine Absage oder schlechte Nachricht weicher. Bildung wie -(으)ㄹ 거예요.", bsp: [
+    "a1-19n4": { kv: "stamm", mehr: "Koreaner sagen selten hart „es ist so“, wenn es nur eine Einschätzung ist. Mit 것 같아요 klingt auch eine Absage oder schlechte Nachricht weicher. Bildung wie -(으)ㄹ 거예요.", bsp: [
       ["비가 [올 것 같아요].", "Es wird wohl regnen."],
       ["오늘은 못 [갈 것 같아요].", "Heute schaffe ich es wohl nicht."],
       ["맛있[을 것 같아요].", "Das schmeckt bestimmt gut."],
@@ -704,7 +705,7 @@ KO.grammatik({
       ["변기가 [막혔어요].", "Die Toilette ist verstopft."],
       ["물이 [새요].", "Es tropft Wasser."]
     ] },
-    "a1-21n3": { kv: true, mehr: "제가 betont, dass ich es übernehme. -(으)ㄹ게요 ist die Zusage: Stamm auf Vokal → ㄹ unten an die Silbe + 게요, Stamm auf Konsonant → 을게요.", bsp: [
+    "a1-21n3": { kv: "stamm", mehr: "제가 betont, dass ich es übernehme. -(으)ㄹ게요 ist die Zusage: Stamm auf Vokal → ㄹ unten an die Silbe + 게요, Stamm auf Konsonant → 을게요.", bsp: [
       ["제가 [청소할게요].", "Ich putze."],
       ["제가 [버릴게요].", "Ich bringe den Müll weg."],
       ["빨래는 제가 [할게요].", "Die Wäsche mache ich."],
@@ -728,7 +729,7 @@ KO.grammatik({
       ["어제보다 [더] 추워요.", "Es ist kälter als gestern.", "보다 = als"],
       ["[덜] 매운 거 있어요?", "Gibt es etwas weniger Scharfes?"]
     ] },
-    "a1-22n3": { kv: true, mehr: "Stamm auf Vokal: ㄴ unten an die Silbe (크 → 큰, 예쁘 → 예쁜). Stamm auf Konsonant: 은 (작 → 작은, 좋 → 좋은). Wörter mit ㅂ: 매운, 더운, 추운. Wörter auf 있다 und 없다 nehmen 는: 맛있는, 재미없는.", bsp: [
+    "a1-22n3": { kv: "stamm", mehr: "Stamm auf Vokal: ㄴ unten an die Silbe (크 → 큰, 예쁘 → 예쁜). Stamm auf Konsonant: 은 (작 → 작은, 좋 → 좋은). Wörter mit ㅂ: 매운, 더운, 추운. Wörter auf 있다 und 없다 nehmen 는: 맛있는, 재미없는.", bsp: [
       ["[작은] 사이즈 주세요.", "Eine kleine Größe, bitte.", "작 endet auf Konsonant → 은"],
       ["[좋은] 생각이에요.", "Das ist eine gute Idee."],
       ["[예쁜] 옷이에요.", "Das ist ein hübsches Kleidungsstück.", "예쁘 endet auf Vokal → ㄴ"],
