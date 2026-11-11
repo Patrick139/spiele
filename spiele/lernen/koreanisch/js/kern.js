@@ -61,7 +61,7 @@ var KO = {
       b.lektionen.forEach(function (l) {
         (l.notiz || []).forEach(function (n, i) {
           var id = l.id + "n" + (i + 1), z = (g.regeln || {})[id] || {};
-          var x = { id: id, art: "regel", lek: l.id, titel: n[0], kurz: n[1], kurzBsp: n[2] || "", mehr: z.mehr || "", kv: !!z.kv, verweis: z.verweis || "", bsp: beispiele(id, z.bsp) };
+          var x = { id: id, art: "regel", lek: l.id, titel: n[0], kurz: n[1], kurzBsp: n[2] || "", mehr: z.mehr || "", kv: z.kv || false, verweis: z.verweis || "", bsp: beispiele(id, z.bsp) };
           self.regeln.push(x); self.regel[id] = x;
         });
       });
