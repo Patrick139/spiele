@@ -194,12 +194,12 @@ var UI = {
       h += '<h2>' + e(b.titel) + '</h2><div class="liste">';
       b.lektionen.forEach(function (l, i) {
         var s = KO.lektionStand(l.id);
-        h += '<button class="zeile lek" data-akt="lektion" data-id="' + l.id + '"><span class="nr">' + (i + 1) + '</span><span class="mitte"><b>' + e(l.titel) + '</b>' + (pin === l.id ? '<em>als Nächstes</em>' : "") +
+        h += '<button class="zeile lek" data-akt="lektion" data-id="' + l.id + '"><span class="nr">' + (parseInt(l.id.split("-")[1], 10) || i + 1) + '</span><span class="mitte"><b>' + e(l.titel) + '</b>' + (pin === l.id ? '<em>als Nächstes</em>' : "") +
           '<span class="fort"><i style="width:' + Math.round(100 * s.gelernt / s.gesamt) + '%"></i></span></span><span class="rechts">' + s.gelernt + ' / ' + s.gesamt + '</span></button>';
       });
       h += '</div>';
     });
-    h += '<p class="klein">A1 Teil 2, A2 und B1 folgen als weitere Blöcke.</p>';
+    h += '<p class="klein">A2 und B1 folgen als weitere Blöcke.</p>';
     this.el("v-lektionen").innerHTML = h;
   },
   dingZeile: function (d) {
