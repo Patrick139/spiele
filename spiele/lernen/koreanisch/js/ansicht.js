@@ -8,7 +8,7 @@ var UI = {
   tage: function (n) { return n <= 1 ? "morgen" : n < 30 ? "in " + n + " Tagen" : n < 335 ? "in " + Math.round(n / 30) + " Monaten" : "in 1 Jahr"; },
 
   start: function () {
-    KO.lade();
+    KO.lade(); KO.baueGrammatik();
     var self = this;
     document.addEventListener("click", function (ev) {
       var e = ev.target.closest ? ev.target.closest("[data-akt]") : null;
@@ -19,8 +19,8 @@ var UI = {
     this.zeig("heute");
   },
   zeig: function (name) {
-    ["heute", "einheit", "lektionen", "lektion", "abhaken", "karten", "mehr"].forEach(function (v) { UI.el("v-" + v).hidden = v !== name; });
-    var haupt = { lektion: "lektionen", abhaken: "lektionen", einheit: "heute" }[name] || name;
+    ["heute", "einheit", "lektionen", "lektion", "abhaken", "grammatik", "regel", "karten", "mehr"].forEach(function (v) { UI.el("v-" + v).hidden = v !== name; });
+    var haupt = { lektion: "lektionen", abhaken: "lektionen", einheit: "heute", regel: "grammatik" }[name] || name;
     Array.prototype.forEach.call(document.querySelectorAll("nav button"), function (b) { b.classList.toggle("an", b.getAttribute("data-ziel") === haupt); });
     document.body.classList.toggle("lernt", name === "einheit");
     if (this["male_" + name]) this["male_" + name]();
@@ -40,8 +40,11 @@ var UI = {
       h += '<div class="karte"><p><b>Für heute erledigt.</b> ' + (v[1] ? "Morgen sind " + v[1] + " Wiederholungen fällig." : "Morgen ist nichts fällig.") + '</p>' +
         (naechste ? '<button class="neben" data-akt="mehrNeue">5 weitere neue Karten lernen</button>' : '<p class="klein">Alle vorhandenen Karten sind gelernt.</p>') + '</div>';
     }
+    var gr = KO.grammatikVorschlag();
+    if (gr) h += '<div class="karte"><h2>Grammatik wiederholen</h2><button class="regelknopf" data-akt="regel" data-id="' + gr.id + '"><b>' + e(gr.titel) + '</b>' + (gr.kurzBsp ? '<span class="bsp" lang="ko">' + e(gr.kurzBsp) + '</span>' : "") +
+      '<span class="weiter">Erklärung und Beispiele ›</span></button><button class="link" data-akt="nav" data-ziel="grammatik">Alle ' + KO.regeln.length + ' Grammatikseiten</button></div>';
     if (!z.woerter && !z.saetze) {
-      h += '<div class="karte hinweis"><b>Du kannst schon etwas Koreanisch?</b><p>Unter „Lektionen“ kannst du in jeder Lektion mit „Bekanntes abhaken“ Wörter überspringen, die du sicher weißt. Sie werden später nur kurz nachgeprüft.</p>' +
+      h += '<div class="karte hinweis"><b>Du kannst schon etwas Koreanisch?</b><p>Unter „Lektionen“ hakst du mit „Einstufung“ ganze Lektionen ab, die du schon kannst, oder in einer Lektion einzelne Wörter. Abgehaktes wird später nur kurz nachgeprüft.</p>' +
         '<button class="neben" data-akt="nav" data-ziel="lektionen">Zu den Lektionen</button></div>';
     }
     h += '<div class="karte"><h2>Stand</h2><div class="zahlen drei"><div><b>' + z.woerter + '</b><span>Wörter gelernt</span></div><div><b>' + z.saetze + '</b><span>Sätze gelernt</span></div><div><b>' + z.fest + '</b><span>davon gefestigt</span></div></div>' +
@@ -189,12 +192,12 @@ var UI = {
 
   // ================= Lektionen =================
   male_lektionen: function () {
-    var e = this.esc, h = '<h1>Lektionen</h1>', pin = KO.stand.einst.pin;
+    var e = this.esc, h = '<h1>Lektionen</h1><button class="neben" data-akt="einstufung">Einstufung: ganze Lektionen abhaken</button>', pin = KO.stand.einst.pin;
     KO.bloecke.forEach(function (b) {
       h += '<h2>' + e(b.titel) + '</h2><div class="liste">';
       b.lektionen.forEach(function (l, i) {
         var s = KO.lektionStand(l.id);
-        h += '<button class="zeile lek" data-akt="lektion" data-id="' + l.id + '"><span class="nr">' + (parseInt(l.id.split("-")[1], 10) || i + 1) + '</span><span class="mitte"><b>' + e(l.titel) + '</b>' + (pin === l.id ? '<em>als Nächstes</em>' : "") +
+        h += '<button class="zeile lek" data-akt="lektion" data-id="' + l.id + '"><span class="nr">' + l.nr + '</span><span class="mitte"><b>' + e(l.titel) + '</b>' + (pin === l.id ? '<em>als Nächstes</em>' : "") +
           '<span class="fort"><i style="width:' + Math.round(100 * s.gelernt / s.gesamt) + '%"></i></span></span><span class="rechts">' + s.gelernt + ' / ' + s.gesamt + '</span></button>';
       });
       h += '</div>';
@@ -211,12 +214,15 @@ var UI = {
     var l = KO.lektionen[this.lektion], e = this.esc, self = this, s = KO.lektionStand(l.id), pin = KO.stand.einst.pin === l.id;
     var h = '<button class="link" data-akt="nav" data-ziel="lektionen">‹ Lektionen</button><h1>' + e(l.titel) + '</h1><p class="klein">' + s.gelernt + ' von ' + s.gesamt + ' gelernt</p>' +
       '<div class="knopfzeile"><button class="neben" data-akt="pin">' + (pin ? "Nicht mehr als Nächstes" : "Als Nächstes lernen") + '</button>' + (s.gelernt < s.gesamt ? '<button class="neben" data-akt="abhaken">Bekanntes abhaken</button>' : "") + '</div>';
-    if (l.notiz && l.notiz.length) h += '<h2>Grammatik</h2>' + l.notiz.map(function (n) { return '<div class="karte notiz"><b>' + e(n[0]) + '</b><p>' + e(n[1]) + '</p>' + (n[2] ? '<p class="bsp" lang="ko">' + e(n[2]) + '</p>' : "") + '</div>'; }).join("");
+    if (l.notiz && l.notiz.length) h += '<h2>Grammatik</h2>' + l.notiz.map(function (n, i) {
+      return '<button class="karte regelknopf" data-akt="regel" data-id="' + l.id + 'n' + (i + 1) + '"><b>' + e(n[0]) + '</b><span>' + e(n[1]) + '</span>' + (n[2] ? '<span class="bsp" lang="ko">' + e(n[2]) + '</span>' : "") + '<span class="weiter">Mehr Beispiele ›</span></button>';
+    }).join("");
     h += '<h2>Wörter</h2><div class="liste">' + l.dinge.filter(function (d) { return d.typ === "w"; }).map(function (d) { return self.dingZeile(d); }).join("") + '</div>';
     h += '<h2>Sätze</h2><div class="liste">' + l.dinge.filter(function (d) { return d.typ === "s"; }).map(function (d) { return self.dingZeile(d); }).join("") + '</div>';
     this.el("v-lektion").innerHTML = h;
   },
   male_abhaken: function () {
+    if (this.abhakModus === "lektionen") { this.maleEinstufung(); return; }
     var l = KO.lektionen[this.lektion], e = this.esc, offen = l.dinge.filter(function (d) { return d.typ === "w" && !KO.gelernt(d); });
     var h = '<button class="link" data-akt="lektion" data-id="' + l.id + '">‹ ' + e(l.titel) + '</button><h1>Bekanntes abhaken</h1><p>Hake nur an, was du sofort lesen und übersetzen kannst. Abgehakte Wörter gelten als gelernt und werden in ein bis drei Wochen einmal nachgeprüft.</p>';
     if (!offen.length) h += '<p>In dieser Lektion sind alle Wörter schon gelernt.</p>';
@@ -224,6 +230,78 @@ var UI = {
       offen.map(function (d) { return '<label class="zeile ding"><input type="checkbox" value="' + d.id + '"><span class="mitte"><span class="k" lang="ko">' + e(d.ko) + '</span><span class="d">' + e(d.de) + '</span></span></label>'; }).join("") +
       '</div><div class="knoepfe fest"><button class="haupt" data-akt="abhakenFertig">Auswahl übernehmen</button></div>';
     this.el("v-abhaken").innerHTML = h;
+  },
+
+  // Einstufung: ganze Lektionen als bekannt abhaken (für alle, die nicht bei null anfangen)
+  maleEinstufung: function () {
+    var e = this.esc, h = '<button class="link" data-akt="nav" data-ziel="lektionen">‹ Lektionen</button><h1>Einstufung</h1>' +
+      '<p>Hake die Lektionen an, deren Wörter und Sätze du schon sicher kannst. Alles darin gilt dann als gelernt und wird in ein bis drei Wochen einmal nachgeprüft. Neue Karten kommen danach aus der ersten Lektion, die du nicht angehakt hast.</p>' +
+      '<p class="klein">Bei einer Lektion unsicher? Dann nicht anhaken, sondern die Lektion öffnen und dort mit „Bekanntes abhaken“ nur einzelne Wörter wählen.</p>';
+    KO.bloecke.forEach(function (b) {
+      var z = b.lektionen.map(function (l) {
+        var s = KO.lektionStand(l.id);
+        return s.gelernt >= s.gesamt ? "" : '<label class="zeile ding"><input type="checkbox" value="' + l.id + '"><span class="mitte"><b>' + l.nr + ' · ' + e(l.titel) + '</b><span class="d">' + s.gelernt + ' von ' + s.gesamt + ' gelernt</span></span></label>';
+      }).join("");
+      if (z) h += '<h2>' + e(b.titel) + '</h2><div class="liste">' + z + '</div>';
+    });
+    h += '<div class="knoepfe fest"><button class="haupt" data-akt="abhakenFertig">Auswahl übernehmen</button></div>';
+    this.el("v-abhaken").innerHTML = h;
+  },
+
+  // ================= Grammatik =================
+  markiere: function (roh) { return this.esc(roh).replace(/\[([^\]]*)\]/g, '<b class="m">$1</b>'); },
+  lektionsNr: function (lekId) { return KO.lektionen[lekId].nr; },
+  regelZeile: function (r) {
+    var e = this.esc;
+    return '<button class="zeile regelz" data-akt="regel" data-id="' + r.id + '"><span class="mitte"><b>' + e(r.titel) + '</b><span class="d"' + (r.art === "regel" ? ' lang="ko"' : "") + '>' + e(r.art === "regel" ? r.kurzBsp : r.kurz) + '</span></span>' +
+      '<span class="punkt' + (KO.stand.gram[r.id] ? " an" : "") + '" title="' + (KO.stand.gram[r.id] ? "angesehen" : "noch nicht angesehen") + '"></span><span class="pfeil">›</span></button>';
+  },
+  grammatikListe: function () {
+    var q = (this.gSuche || "").trim().toLowerCase(), self = this, e = this.esc, h = "";
+    var passt = function (r) {
+      if (!q) return true;
+      return (r.titel + " " + r.kurz + " " + (r.kurzBsp || "") + " " + (r.mehr || "") + " " + r.bsp.map(function (b) { return b.ko + " " + b.de; }).join(" ")).toLowerCase().indexOf(q) >= 0;
+    };
+    var grund = KO.regeln.filter(function (r) { return r.art === "grund" && passt(r); });
+    if (grund.length) h += '<h2>Grundlagen</h2><div class="liste">' + grund.map(function (r) { return self.regelZeile(r); }).join("") + '</div>';
+    KO.bloecke.forEach(function (b) {
+      b.lektionen.forEach(function (l) {
+        var rr = KO.regeln.filter(function (r) { return r.lek === l.id && passt(r); });
+        if (rr.length) h += '<h2>' + self.lektionsNr(l.id) + ' · ' + e(l.titel) + '</h2><div class="liste">' + rr.map(function (r) { return self.regelZeile(r); }).join("") + '</div>';
+      });
+    });
+    return h || '<p class="klein">Nichts gefunden.</p>';
+  },
+  male_grammatik: function () {
+    var e = this.esc, self = this;
+    this.el("v-grammatik").innerHTML = '<h1>Grammatik</h1><p class="klein">Jede Regel hat eine eigene Seite mit Erklärung und Beispielen zum Anhören. Der grüne Punkt zeigt, was du schon angesehen hast.</p>' +
+      '<input id="gSuch" type="search" placeholder="Suchen, z. B. 은, müssen, Vergangenheit" value="' + e(this.gSuche || "") + '" autocomplete="off"><div id="gListe">' + this.grammatikListe() + '</div>';
+    var s = this.el("gSuch");
+    s.oninput = function () { self.gSuche = s.value; self.el("gListe").innerHTML = self.grammatikListe(); };
+  },
+  male_regel: function () {
+    var r = KO.regel[this.regelId], e = this.esc, self = this;
+    if (!r) { this.zeig("grammatik"); return; }
+    KO.stand.gram[r.id] = KO.heute(); KO.speichere();
+    var nr = KO.regeln.indexOf(r), vor = KO.regeln[nr - 1], nach = KO.regeln[nr + 1], lek = r.lek ? KO.lektionen[r.lek] : null;
+    var h = '<button class="link" data-akt="nav" data-ziel="grammatik">‹ Grammatik</button><div class="etikett">' + (lek ? 'Lektion ' + this.lektionsNr(r.lek) + ' · ' + e(lek.titel) : 'Grundlagen') + '</div><h1 class="regeltitel">' + e(r.titel) + '</h1>';
+    h += '<div class="karte"><p>' + e(r.kurz) + '</p>' + (r.kurzBsp ? '<p class="bsp" lang="ko">' + e(r.kurzBsp) + '</p>' : "") + '</div>';
+    if (r.mehr) h += '<h2>Genauer</h2><p>' + e(r.mehr) + '</p>';
+    (r.text || []).forEach(function (t) { h += '<p>' + e(t) + '</p>'; });
+    if (r.tabelle) h += '<div class="tabwrap"><table class="gt">' + r.tabelle.map(function (z, i) {
+      return '<tr>' + z.map(function (c) { return (i === 0 ? '<th>' : '<td>') + e(c) + (i === 0 ? '</th>' : '</td>'); }).join("") + '</tr>';
+    }).join("") + '</table></div>';
+    (r.danach || []).forEach(function (t) { h += '<p>' + e(t) + '</p>'; });
+    if (r.kv) h += '<button class="karte hinweis regelknopf" data-akt="regel" data-id="g-kv"><b>Konsonant oder Vokal?</b><span>Sieh dir die letzte Silbe davor an. Steht unten noch ein Zeichen, endet das Wort auf Konsonant (책, 물, 빵). Steht dort nichts, endet es auf Vokal (사과, 친구, 저).</span><span class="weiter">Ganze Erklärung ›</span></button>';
+    if (r.verweis && KO.regel[r.verweis]) h += '<button class="karte hinweis regelknopf" data-akt="regel" data-id="' + r.verweis + '"><b>' + e(KO.regel[r.verweis].titel) + '</b><span>' + e(KO.regel[r.verweis].kurz) + '</span><span class="weiter">Zur Übersicht ›</span></button>';
+    if (r.bsp.length) h += '<h2>Beispiele</h2><div class="liste">' + r.bsp.map(function (b) {
+      return '<div class="zeile ding"><button class="spiel" data-akt="ton" data-id="' + b.id + '" aria-label="Anhören">▶</button><span class="mitte"><span class="k" lang="ko">' + self.markiere(b.roh) + '</span><span class="d">' + e(b.de) + '</span>' +
+        (b.hin ? '<span class="h">' + e(b.hin) + '</span>' : "") + '</span><button class="lang" data-akt="ton" data-langsam="1" data-id="' + b.id + '">langsam</button></div>';
+    }).join("") + '</div>';
+    if (r.siehe && r.siehe.length) h += '<h2>Dazu gehören</h2><div class="liste">' + r.siehe.map(function (id) { return KO.regel[id] ? self.regelZeile(KO.regel[id]) : ""; }).join("") + '</div>';
+    if (lek) h += '<button class="neben" data-akt="lektion" data-id="' + lek.id + '">Zur Lektion ' + this.lektionsNr(lek.id) + ': ' + e(lek.titel) + '</button>';
+    h += '<div class="blaettern">' + (vor ? '<button class="neben" data-akt="regel" data-id="' + vor.id + '">‹ ' + e(vor.titel) + '</button>' : "") + (nach ? '<button class="neben" data-akt="regel" data-id="' + nach.id + '">' + e(nach.titel) + ' ›</button>' : "") + '</div>';
+    this.el("v-regel").innerHTML = h;
   },
 
   // ================= Karten =================
@@ -265,13 +343,10 @@ var UI = {
       '<p class="klein">Tasten am PC: Leertaste aufdecken und „Gewusst“, 1 nicht gewusst, 2 gewusst, 3 leicht, A anhören.</p></details>';
     h += '<details class="karte"><summary>Sichern und Laden</summary><p>Der Lernstand liegt nur in diesem Browser auf diesem Gerät. Mit einer Sicherungsdatei überträgst du ihn auf ein anderes Gerät oder hebst ihn auf.</p>' +
       '<div class="knopfzeile"><button class="neben" data-akt="sichern">Sicherungsdatei speichern</button><label class="neben dateiwahl">Sicherungsdatei laden<input type="file" id="ladeDatei" accept=".json,application/json"></label></div><p class="klein" id="sichMeldung"></p></details>';
-    h += '<details class="karte"><summary>Ton für unterwegs</summary><p>Lädt alle Tondateien aufs Gerät, damit sie auch ohne Internet abgespielt werden (' + Object.keys(KO.dinge).length + ' kleine Dateien).</p><button class="neben" data-akt="tonLaden">Alle Tondateien laden</button><p class="klein" id="tonMeldung"></p></details>';
+    h += '<details class="karte"><summary>Ton für unterwegs</summary><p>Lädt alle Tondateien aufs Gerät, damit sie auch ohne Internet abgespielt werden (' + (Object.keys(KO.dinge).length + Object.keys(KO.gbsp).length) + ' kleine Dateien).</p><button class="neben" data-akt="tonLaden">Alle Tondateien laden</button><p class="klein" id="tonMeldung"></p></details>';
     h += '<details class="karte"><summary>Durchsicht für Muttersprachler</summary><p>Hier kann jemand, der Koreanisch als Muttersprache spricht, Fehler im Text oder im Ton markieren. Der Bericht lässt sich kopieren und weitergeben.</p>' +
       '<label>Lektion<select id="pLek">' + KO.lektionsFolge().sort().map(function (id) { return '<option value="' + id + '"' + (UI.pruefLek === id ? " selected" : "") + '>' + e(KO.lektionen[id].titel) + '</option>'; }).join("") + '</select></label><div id="pListe"></div>' +
       '<button class="neben" data-akt="bericht">Bericht anzeigen</button><textarea id="pBericht" readonly hidden rows="8"></textarea></details>';
-    h += '<details class="karte"><summary>Grammatik aller Lektionen</summary>' + KO.lektionsFolge().sort().map(function (id) {
-      var l = KO.lektionen[id]; return (l.notiz || []).length ? '<h3>' + e(l.titel) + '</h3>' + l.notiz.map(function (n) { return '<div class="notiz"><b>' + e(n[0]) + '</b><p>' + e(n[1]) + '</p>' + (n[2] ? '<p class="bsp" lang="ko">' + e(n[2]) + '</p>' : "") + '</div>'; }).join("") : "";
-    }).join("") + '</details>';
     h += '<details class="karte"><summary>Lernstand zurücksetzen</summary><p>Löscht alle Lernstände, eigenen Karten und Markierungen auf diesem Gerät.</p><button class="neben schlecht" data-akt="zurueckSetzen" id="rKnopf">Alles löschen</button></details>';
     h += '<p class="klein">Stimme: Supertonic (Supertone, Seoul), einmalig erzeugt. Wiederholung nach dem FSRS-Verfahren. Inhalte ohne Gewähr – Fehler bitte über die Durchsicht melden.</p>';
     this.el("v-mehr").innerHTML = h;
@@ -287,7 +362,9 @@ var UI = {
   },
   malePruef: function () {
     var l = KO.lektionen[this.pruefLek], e = this.esc, P = KO.stand.pruef, box = this.el("pListe");
-    box.innerHTML = l.dinge.map(function (d) {
+    var zeilen = l.dinge.slice();                      // Wörter und Sätze der Lektion, danach die Beispiele ihrer Grammatikregeln
+    KO.regeln.forEach(function (r) { if (r.lek === l.id) zeilen = zeilen.concat(r.bsp); });
+    box.innerHTML = zeilen.map(function (d) {
       var p = P[d.id] || {};
       return '<div class="pruef" data-id="' + d.id + '"><div class="zeile ding"><button class="spiel" data-akt="ton" data-id="' + d.id + '" aria-label="Anhören">▶</button><span class="mitte"><span class="k" lang="ko">' + e(d.ko) + '</span><span class="d">' + e(d.de) + '</span></span></div>' +
         '<div class="pzeile"><label class="haken"><input type="checkbox" data-f="text"' + (p.text ? " checked" : "") + '> Text falsch</label><label class="haken"><input type="checkbox" data-f="ton"' + (p.ton ? " checked" : "") + '> Ton falsch</label><input type="text" data-f="k" placeholder="Besser wäre …" value="' + e(p.k || "") + '"></div></div>';
@@ -340,12 +417,18 @@ var UI = {
     dochRichtig: function () { this.jetzt.richtig = true; this.note(3); },
     lektion: function (e) { this.lektion = e.getAttribute("data-id"); this.zeig("lektion"); },
     pin: function () { var E = KO.stand.einst; E.pin = E.pin === this.lektion ? "" : this.lektion; KO.speichere(); this.male_lektion(); },
-    abhaken: function () { this.zeig("abhaken"); },
+    abhaken: function () { this.abhakModus = "woerter"; this.zeig("abhaken"); },
+    einstufung: function () { this.abhakModus = "lektionen"; this.zeig("abhaken"); },
+    regel: function (e) { this.regelId = e.getAttribute("data-id"); this.zeig("regel"); },
     alleAn: function () { Array.prototype.forEach.call(this.el("v-abhaken").querySelectorAll("input[type=checkbox]"), function (c) { c.checked = true; }); },
     alleAus: function () { Array.prototype.forEach.call(this.el("v-abhaken").querySelectorAll("input[type=checkbox]"), function (c) { c.checked = false; }); },
     abhakenFertig: function () {
       var ids = Array.prototype.map.call(this.el("v-abhaken").querySelectorAll("input[type=checkbox]:checked"), function (c) { return c.value; });
-      KO.hakeAb(ids); this.zeig("lektion");
+      if (this.abhakModus === "lektionen") {
+        var alle = [];
+        ids.forEach(function (lek) { KO.lektionen[lek].dinge.forEach(function (d) { alle.push(d.id); }); });
+        KO.hakeAb(alle); this.zeig("lektionen");
+      } else { KO.hakeAb(ids); this.zeig("lektion"); }
     },
     reiter: function (e) { this.kartenReiter = e.getAttribute("data-r"); this.male_karten(); },
     eigeneNeu: function () {

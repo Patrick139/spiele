@@ -10,7 +10,8 @@ Lernkarten mit Wiederholung nach Intervall, erreichbar über die Lernecke (Kache
 | `js/srs.js` | Wiederholungsabstände (FSRS 4.5, Standardgewichte) |
 | `js/kern.js` | Daten, Lernstand, Ton, Zusammenstellen der Lerneinheit |
 | `js/ansicht.js` | Oberfläche |
-| `daten/*.js` | Lerninhalte, ein Block je Datei |
+| `daten/a1_*.js` … | Lerninhalte, ein Block je Datei |
+| `daten/grammatik.js` | Grammatikteil: Grundlagen-Seiten, je Regel genauere Erklärung und Beispiele |
 | `ton/*.mp3` | eine Tondatei je Wort und Satz |
 | `werkzeug/` | Erzeugen der Tondateien |
 
