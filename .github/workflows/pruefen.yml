@@ -1,0 +1,29 @@
+# Prüft die Sammlung bei jedem Pull Request und nach jedem Merge: Syntax, Dateiliste der Offline-Ablage, Daten, Start jeder Seite im Browser.
+name: Prüfen
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: pruefen-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Syntax, Verweise, Offline-Liste, Lieder, Koreanisch-Daten
+        run: node tests/pruefe.mjs
+      - name: Browser einrichten
+        working-directory: tests
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright@1
+          npx playwright install --with-deps chromium
+      - name: Seiten im Browser starten und anspielen
+        run: node tests/browser.mjs

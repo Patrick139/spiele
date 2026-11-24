@@ -362,7 +362,8 @@ var UI = {
       '<label class="haken"><input type="checkbox" id="sDeko"' + (E.deko ? " checked" : "") + '> Auch Deutsch → Koreanisch abfragen</label>' +
       '<p class="klein">Tasten am PC: Leertaste aufdecken und „Gewusst“, 1 nicht gewusst, 2 gewusst, 3 leicht, A anhören.</p></details>';
     h += '<details class="karte"><summary>Sichern und Laden</summary><p>Der Lernstand liegt nur in diesem Browser auf diesem Gerät. Mit einer Sicherungsdatei überträgst du ihn auf ein anderes Gerät oder hebst ihn auf.</p>' +
-      '<div class="knopfzeile"><button class="neben" data-akt="sichern">Sicherungsdatei speichern</button><label class="neben dateiwahl">Sicherungsdatei laden<input type="file" id="ladeDatei" accept=".json,application/json"></label></div><p class="klein" id="sichMeldung">' +
+      '<div class="knopfzeile"><button class="neben" data-akt="sichern">Sicherungsdatei speichern</button><label class="neben dateiwahl">Sicherungsdatei laden<input type="file" id="ladeDatei" accept=".json,.txt,application/json,text/plain"></label></div>' +
+      (this.teilbar() ? '<button class="neben" data-akt="teilen">Sicherungsdatei teilen (an dich selbst schicken)</button>' : "") + '<p class="klein" id="sichMeldung">' +
       (KO.stand.sich ? "Letzte Sicherungsdatei: " + KO.datum(KO.stand.sich) + "." : "Bisher keine Sicherungsdatei gespeichert.") + '</p>';
     var kop = KO.kopie();
     if (kop) h += '<p><b>Kopie im Browser:</b> Stand vom ' + KO.datum(kop.tag) + ' mit ' + Object.keys(kop.stand.karten).length + ' Lernkarten. Sie wird einmal am Tag von selbst angelegt und hilft, wenn der Lernstand versehentlich zurückgesetzt wurde.</p>' +
@@ -409,6 +410,18 @@ var UI = {
       if (!p.text && !p.ton && !p.k) delete P[id];
       KO.speichere();
     };
+  },
+  // Sicherungsdatei: zum Speichern als .json; zum Teilen als .txt mit demselben Inhalt, weil das Teilen-Menü der Handys .json oft nicht annimmt
+  sicherungsName: function (endung) {
+    var d = new Date(KO.jetzt());
+    return "koreanisch-lernstand-" + d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2) + "." + endung;
+  },
+  teilDatei: function (inhalt) {
+    try { return new File([inhalt], this.sicherungsName("txt"), { type: "text/plain" }); } catch (e) { return null; }
+  },
+  teilbar: function () {
+    var f = this.teilDatei("{}");
+    try { return !!(f && navigator.share && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; }
   },
   ladeDatei: function (datei) {
     var m = this.el("sichMeldung"), self = this;
@@ -479,7 +492,7 @@ var UI = {
       KO.speichere(); this.male_karten();
     },
     sichern: function () {
-      var d = new Date(KO.jetzt()), name = "koreanisch-lernstand-" + d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2) + ".json";
+      var name = this.sicherungsName("json");
       var a = document.createElement("a"), url = URL.createObjectURL(new Blob([JSON.stringify(KO.stand)], { type: "application/json" }));
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
@@ -487,6 +500,16 @@ var UI = {
       var m = this.el("v-mehr").hidden ? null : this.el("v-mehr").querySelector("#sichMeldung");
       if (m) m.textContent = "Gespeichert als " + name + " (im Download-Ordner).";
       else if (!this.el("v-heute").hidden) this.male_heute();
+    },
+    teilen: function () {
+      var f = this.teilDatei(JSON.stringify(KO.stand)), m = this.el("v-mehr").querySelector("#sichMeldung");
+      if (!f) return;
+      navigator.share({ files: [f], title: "Koreanisch-Lernstand" }).then(function () {
+        KO.stand.sich = KO.heute(); KO.speichere();
+        if (m) m.textContent = "Geteilt als " + f.name + ". Auf dem anderen Gerät die Datei speichern und hier mit „Sicherungsdatei laden“ einlesen.";
+      }, function (fehler) {
+        if (m && !(fehler && fehler.name === "AbortError")) m.textContent = "Teilen hat nicht geklappt. Nimm stattdessen „Sicherungsdatei speichern“.";
+      });
     },
     kopieLaden: function (e) {
       if (e.getAttribute("data-sicher") !== "1" && Object.keys(KO.stand.karten).length) { e.setAttribute("data-sicher", "1"); e.textContent = "Der jetzige Lernstand wird ersetzt. Nochmal tippen."; return; }
