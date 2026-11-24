@@ -526,7 +526,11 @@ function gewertet(ok) {
   if (ok) {
     if (Z.erster) {
       const k = "serie_" + Z.modus, n = (+lies(k, 0) || 0) + 1, st = stufe();
-      if (n >= 5 && st < 4) { schreib("stufe_" + Z.modus, st + 1); schreib(k, 0); stufenZeigen(); setTimeout(() => toast("Stufe " + (st + 1) + ": " + S().t), 300); }
+      if (n >= 5 && st < 4) {
+        schreib("stufe_" + Z.modus, st + 1); schreib(k, 0); stufenZeigen();
+        const text = "Stufe " + (st + 1) + ": " + S().t;                 // Text jetzt festhalten: bis zur Anzeige kann schon ein anderer Bereich offen sein
+        setTimeout(() => toast(text), 300);
+      }
       else schreib(k, n);
     }
   } else schreib("serie_" + Z.modus, 0);

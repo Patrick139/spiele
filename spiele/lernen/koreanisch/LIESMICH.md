@@ -20,7 +20,7 @@ Der Lernstand liegt im Browser des Geräts (`localStorage`, Schlüssel `koreanis
 
 Schutz des Lernstands:
 
-- Sicherungsdatei (Mehr → Sichern und Laden). Die Startseite erinnert daran, wenn die letzte Datei älter als 14 Tage ist.
+- Sicherungsdatei (Mehr → Sichern und Laden). Die Startseite erinnert daran, wenn die letzte Datei älter als 14 Tage ist. Am Handy gibt es dort auch „Sicherungsdatei teilen“: Die Datei geht über das Teilen-Menü an eine App eigener Wahl (zum Beispiel als Mail an sich selbst), als `.txt` mit demselben Inhalt wie die `.json`. Laden lassen sich beide.
 - Kopie im Browser (`koreanisch_v1_kopie`): einmal am Tag der Stand vom Tagesbeginn, außerdem vor „Alles löschen“ und vor dem Laden einer Datei. Wiederherstellen unter Mehr → Sichern und Laden.
 - Mehr → „Lernstand vor dem Löschen durch den Browser schützen“ bittet den Browser, die Daten der Seite nicht von selbst zu löschen.
 
