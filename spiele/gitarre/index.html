@@ -82,8 +82,8 @@
   .reihe.mitte { justify-content: center; margin: 8px 0; }
   .reihe .knopf.rund { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
   /* Lieder */
-  #liedWahl { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 2px; }
-  #liedWahl .knopf { font-size: 14px; padding: 7px 11px; }
+  #liedWahl { font: inherit; font-size: 15px; font-weight: 700; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--rand); background: var(--karte); color: var(--tinte);
+    width: 100%; max-width: 380px; margin: 4px 0 2px; }
   #tabBox svg { width: 100%; height: auto; display: block; }
   #tabBox .zahl { font-weight: 800; font-size: 15px; fill: var(--tinte); }
   #tabBox .name { font-size: 12px; font-weight: 700; fill: var(--sanft); }
@@ -171,7 +171,7 @@
   </section>
 
   <section id="liedBox" class="weg">
-    <div id="liedWahl"></div>
+    <select id="liedWahl" aria-label="Lied wählen"></select>
     <div id="tabBox"></div>
     <div class="reihe mitte">
       <button class="knopf" id="liedVor">▶ Vorspielen</button>
@@ -705,12 +705,15 @@ function tabZeichnen() {
     svg.appendChild(el("text", { x: 13, y: oben + i * lg + 4.5, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#76685a" }, SAITE[5 - i]));
   }
   for (let k = 0; k <= tpz; k++) svg.appendChild(el("line", { x1: links + k * tb, x2: links + k * tb, y1: oben, y2: oben + 5 * lg, stroke: "#76685a", "stroke-width": 1.5 }));
+  // Platz je Ton nach Dauer, aber nicht streng im Verhaeltnis, damit Achtel nicht zusammenstossen
+  const platz = d => d <= 0.5 ? 0.7 : d <= 1 ? 1 : d <= 1.5 ? 1.3 : d <= 2 ? 1.5 : 2.2, summe = {};
+  L.t.forEach(n => { summe[n.takt] = (summe[n.takt] || 0) + platz(n.dauer); });
   let schlag = 0, takt = -1;
   L.t.forEach((n, i) => {
     if (n.takt !== takt) { takt = n.takt; schlag = 0; }
-    const vor = schlag; schlag += n.dauer;
+    const vor = schlag; schlag += platz(n.dauer);
     if (Math.floor(n.takt / tpz) !== zeile) return;
-    const x = links + (n.takt % tpz) * tb + 16 + vor / 4 * (tb - 20), y = oben + (5 - n.lage.s) * lg;
+    const x = links + (n.takt % tpz) * tb + 16 + vor / summe[n.takt] * (tb - 20), y = oben + (5 - n.lage.s) * lg;
     const g = el("g", { class: L.spielt < 0 && i < L.pos ? "fertig" : i === bei ? "jetzt" : "" });
     g.appendChild(el("circle", { cx: x, cy: y, r: 9.5, class: "hg" }));
     g.appendChild(el("text", { x: x, y: y + 5.2, "text-anchor": "middle", class: "zahl" }, n.lage.f));
@@ -724,12 +727,10 @@ function tabZeichnen() {
 function liedZeigen() {
   const L = Z.lied, fertig = lies("lieder", {}), hilfe = !!lies("liedHilfe", true), zuEnde = L.pos >= L.t.length;
   Z.gen++;                                                           // offene Zeitgeber der anderen Uebungen laufen ins Leere
-  $("liedWahl").innerHTML = "";
-  LIEDER.liste.forEach(l => {
-    const b = document.createElement("button"); b.className = "knopf" + (l.id === L.id ? " an" : ""); b.textContent = (l.id in fertig ? "✓ " : "") + l.titel;
-    b.onclick = () => { liedLaden(l.id); liedZeigen(); };
-    $("liedWahl").appendChild(b);
-  });
+  const wahl = $("liedWahl");
+  if (!wahl.options.length) LIEDER.liste.forEach(l => { const o = document.createElement("option"); o.value = l.id; wahl.appendChild(o); });
+  LIEDER.liste.forEach((l, i) => { wahl.options[i].textContent = (l.id in fertig ? "✓ " : "") + l.titel; });
+  wahl.value = L.id;
   $("liedHilfe").classList.toggle("an", hilfe);
   $("liedVor").textContent = L.spielt >= 0 ? "■ Stopp" : "▶ Vorspielen";
   $("bild").innerHTML = ""; $("wahl").innerHTML = "";
@@ -997,6 +998,7 @@ window.addEventListener("resize", () => { clearTimeout(drehT); drehT = setTimeou
   const d = $("theoText"); d.open = !!lies("theoOffen", true);
   d.addEventListener("toggle", () => schreib("theoOffen", d.open));
 })();
+$("liedWahl").addEventListener("change", ev => { liedLaden(ev.target.value); liedZeigen(); });
 $("liedVor").addEventListener("click", () => liedVorspielen());
 $("liedNeu").addEventListener("click", () => { liedLaden(Z.lied.id); liedZeigen(); });
 $("liedHilfe").addEventListener("click", () => { schreib("liedHilfe", !lies("liedHilfe", true)); liedZeigen(); });
