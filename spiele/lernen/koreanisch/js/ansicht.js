@@ -1,4 +1,5 @@
-// ansicht.js — Oberfläche: Heute, Lerneinheit, Lektionen, Karten, Mehr. Kein Modul; globales Objekt UI.
+// ansicht.js — Oberfläche: Heute, Lerneinheit, Lektionen, Grammatik, Karten, Mehr. Kein Modul; globales Objekt UI.
+// Die Themenübungen (Üben, Thema, Übung) stehen in ueben.js und hängen sich an UI an.
 // Bedienung über data-akt="name" an Knöpfen; ein Klick ruft UI.akt.name(element) auf.
 var UI = {
   einheit: null, jetzt: null, lektion: "", kartenReiter: "eigene", suche: "",
@@ -16,13 +17,15 @@ var UI = {
     });
     document.addEventListener("keydown", function (ev) { self.taste(ev); });
     if ("speechSynthesis" in window) { try { speechSynthesis.getVoices(); } catch (e) {} }
+    // Offline-Ablage auch dann einrichten, wenn die Seite direkt (über ein Lesezeichen) geöffnet wird und nicht über die Spielesammlung
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../../../sw.js").catch(function () {});
     this.zeig("heute");
   },
   zeig: function (name) {
-    ["heute", "einheit", "lektionen", "lektion", "abhaken", "grammatik", "regel", "karten", "mehr"].forEach(function (v) { UI.el("v-" + v).hidden = v !== name; });
-    var haupt = { lektion: "lektionen", abhaken: "lektionen", einheit: "heute", regel: "grammatik" }[name] || name;
+    ["heute", "einheit", "ueben", "thema", "uebung", "lektionen", "lektion", "abhaken", "grammatik", "regel", "karten", "mehr"].forEach(function (v) { UI.el("v-" + v).hidden = v !== name; });
+    var haupt = { lektion: "lektionen", abhaken: "lektionen", einheit: "heute", regel: "grammatik", thema: "ueben", uebung: "ueben" }[name] || name;
     Array.prototype.forEach.call(document.querySelectorAll("nav button"), function (b) { b.classList.toggle("an", b.getAttribute("data-ziel") === haupt); });
-    document.body.classList.toggle("lernt", name === "einheit");
+    document.body.classList.toggle("lernt", name === "einheit" || name === "uebung");
     if (this["male_" + name]) this["male_" + name]();
     window.scrollTo(0, 0);
   },
@@ -32,6 +35,11 @@ var UI = {
     var z = KO.zahlen(), v = KO.vorschau(7), max = Math.max.apply(null, v.concat([1])), e = this.esc, h = "";
     var naechste = KO.naechsteNeue(1)[0], lek = naechste && naechste.lek ? KO.lektionen[naechste.lek] : null;
     h += '<h1>Heute</h1>';
+    var anzKarten = Object.keys(KO.stand.karten).length, kop = anzKarten ? null : KO.kopie();
+    if (kop && Object.keys(kop.stand.karten).length) {
+      h += '<div class="karte hinweis"><b>Kein Lernstand gefunden – aber eine Kopie vom ' + KO.datum(kop.tag) + '.</b><p class="klein">Die Kopie enthält ' + Object.keys(kop.stand.karten).length + ' Lernkarten.</p>' +
+        '<button class="neben" data-akt="kopieLaden">Kopie wiederherstellen</button></div>';
+    }
     if (z.faellig + z.neuRest > 0) {
       h += '<div class="karte"><div class="zahlen"><div><b>' + z.faellig + '</b><span>Wiederholungen fällig</span></div><div><b>' + z.neuRest + '</b><span>neue Karten</span></div></div>' +
         '<button class="haupt" data-akt="einheit">Lerneinheit starten</button>' +
@@ -40,6 +48,11 @@ var UI = {
       h += '<div class="karte"><p><b>Für heute erledigt.</b> ' + (v[1] ? "Morgen sind " + v[1] + " Wiederholungen fällig." : "Morgen ist nichts fällig.") + '</p>' +
         (naechste ? '<button class="neben" data-akt="mehrNeue">5 weitere neue Karten lernen</button>' : '<p class="klein">Alle vorhandenen Karten sind gelernt.</p>') + '</div>';
     }
+    var letzte = null;
+    Object.keys(KO.stand.ueb).forEach(function (id) { if (KO.lektionen[id] && (!letzte || KO.stand.ueb[id].t > KO.stand.ueb[letzte].t)) letzte = id; });
+    h += '<div class="karte"><h2>Gezielt üben</h2><p class="klein">Ein Thema wählen und nur das üben: Wörter, Hören, Lückensätze, Satzbau, Grammatik. Unabhängig von den Lernkarten.</p>' +
+      (letzte ? '<button class="neben" data-akt="thema" data-id="' + letzte + '">Zuletzt: ' + e(KO.lektionen[letzte].titel) + '</button>' : "") +
+      '<button class="neben" data-akt="nav" data-ziel="ueben">Thema wählen</button></div>';
     var gr = KO.grammatikVorschlag();
     if (gr) h += '<div class="karte"><h2>Grammatik wiederholen</h2><button class="regelknopf" data-akt="regel" data-id="' + gr.id + '"><b>' + e(gr.titel) + '</b>' + (gr.kurzBsp ? '<span class="bsp" lang="ko">' + e(gr.kurzBsp) + '</span>' : "") +
       '<span class="weiter">Erklärung und Beispiele ›</span></button><button class="link" data-akt="nav" data-ziel="grammatik">Alle ' + KO.regeln.length + ' Grammatikseiten</button></div>';
@@ -56,6 +69,11 @@ var UI = {
       h += '<div><span class="wert">' + n + '</span><i style="height:' + Math.round(4 + 56 * n / max) + 'px"></i><span>' + (i === 0 ? "heute" : namen[d.getDay()]) + '</span></div>';
     });
     h += '</div></div>';
+    var seit = KO.stand.sich ? KO.heute() - KO.stand.sich : -1;
+    if (anzKarten >= 30 && (seit < 0 || seit >= 14)) {
+      h += '<div class="karte hinweis"><b>Lernstand sichern</b><p class="klein">' + (seit < 0 ? "Bisher gibt es keine Sicherungsdatei." : "Die letzte Sicherungsdatei ist " + seit + " Tage alt.") +
+        ' Der Lernstand liegt nur in diesem Browser auf diesem Gerät.</p><button class="neben" data-akt="sichern">Sicherungsdatei speichern</button></div>';
+    }
     this.el("v-heute").innerHTML = h;
   },
 
@@ -202,7 +220,7 @@ var UI = {
       });
       h += '</div>';
     });
-    h += '<p class="klein">A2 und B1 folgen als weitere Blöcke.</p>';
+    h += '<p class="klein">B1 Teil 2 folgt als weiterer Block.</p>';
     this.el("v-lektionen").innerHTML = h;
   },
   dingZeile: function (d) {
@@ -213,6 +231,7 @@ var UI = {
   male_lektion: function () {
     var l = KO.lektionen[this.lektion], e = this.esc, self = this, s = KO.lektionStand(l.id), pin = KO.stand.einst.pin === l.id;
     var h = '<button class="link" data-akt="nav" data-ziel="lektionen">‹ Lektionen</button><h1>' + e(l.titel) + '</h1><p class="klein">' + s.gelernt + ' von ' + s.gesamt + ' gelernt</p>' +
+      '<button class="haupt" data-akt="thema" data-id="' + l.id + '">Dieses Thema üben</button>' +
       '<div class="knopfzeile"><button class="neben" data-akt="pin">' + (pin ? "Nicht mehr als Nächstes" : "Als Nächstes lernen") + '</button>' + (s.gelernt < s.gesamt ? '<button class="neben" data-akt="abhaken">Bekanntes abhaken</button>' : "") + '</div>';
     if (l.notiz && l.notiz.length) h += '<h2>Grammatik</h2>' + l.notiz.map(function (n, i) {
       return '<button class="karte regelknopf" data-akt="regel" data-id="' + l.id + 'n' + (i + 1) + '"><b>' + e(n[0]) + '</b><span>' + e(n[1]) + '</span>' + (n[2] ? '<span class="bsp" lang="ko">' + e(n[2]) + '</span>' : "") + '<span class="weiter">Mehr Beispiele ›</span></button>';
@@ -298,6 +317,7 @@ var UI = {
       return '<div class="zeile ding"><button class="spiel" data-akt="ton" data-id="' + b.id + '" aria-label="Anhören">▶</button><span class="mitte"><span class="k" lang="ko">' + self.markiere(b.roh) + '</span><span class="d">' + e(b.de) + '</span>' +
         (b.hin ? '<span class="h">' + e(b.hin) + '</span>' : "") + '</span><button class="lang" data-akt="ton" data-langsam="1" data-id="' + b.id + '">langsam</button></div>';
     }).join("") + '</div>';
+    if (r.bsp.some(function (b) { return /\[[^\]]+\]/.test(b.roh); })) h += '<button class="haupt" data-akt="regelUeben" data-id="' + r.id + '">Diese Regel üben</button>';
     if (r.siehe && r.siehe.length) h += '<h2>Dazu gehören</h2><div class="liste">' + r.siehe.map(function (id) { return KO.regel[id] ? self.regelZeile(KO.regel[id]) : ""; }).join("") + '</div>';
     if (lek) h += '<button class="neben" data-akt="lektion" data-id="' + lek.id + '">Zur Lektion ' + this.lektionsNr(lek.id) + ': ' + e(lek.titel) + '</button>';
     h += '<div class="blaettern">' + (vor ? '<button class="neben" data-akt="regel" data-id="' + vor.id + '">‹ ' + e(vor.titel) + '</button>' : "") + (nach ? '<button class="neben" data-akt="regel" data-id="' + nach.id + '">' + e(nach.titel) + ' ›</button>' : "") + '</div>';
@@ -342,7 +362,14 @@ var UI = {
       '<label class="haken"><input type="checkbox" id="sDeko"' + (E.deko ? " checked" : "") + '> Auch Deutsch → Koreanisch abfragen</label>' +
       '<p class="klein">Tasten am PC: Leertaste aufdecken und „Gewusst“, 1 nicht gewusst, 2 gewusst, 3 leicht, A anhören.</p></details>';
     h += '<details class="karte"><summary>Sichern und Laden</summary><p>Der Lernstand liegt nur in diesem Browser auf diesem Gerät. Mit einer Sicherungsdatei überträgst du ihn auf ein anderes Gerät oder hebst ihn auf.</p>' +
-      '<div class="knopfzeile"><button class="neben" data-akt="sichern">Sicherungsdatei speichern</button><label class="neben dateiwahl">Sicherungsdatei laden<input type="file" id="ladeDatei" accept=".json,application/json"></label></div><p class="klein" id="sichMeldung"></p></details>';
+      '<div class="knopfzeile"><button class="neben" data-akt="sichern">Sicherungsdatei speichern</button><label class="neben dateiwahl">Sicherungsdatei laden<input type="file" id="ladeDatei" accept=".json,application/json"></label></div><p class="klein" id="sichMeldung">' +
+      (KO.stand.sich ? "Letzte Sicherungsdatei: " + KO.datum(KO.stand.sich) + "." : "Bisher keine Sicherungsdatei gespeichert.") + '</p>';
+    var kop = KO.kopie();
+    if (kop) h += '<p><b>Kopie im Browser:</b> Stand vom ' + KO.datum(kop.tag) + ' mit ' + Object.keys(kop.stand.karten).length + ' Lernkarten. Sie wird einmal am Tag von selbst angelegt und hilft, wenn der Lernstand versehentlich zurückgesetzt wurde.</p>' +
+      '<button class="neben" data-akt="kopieLaden">Kopie wiederherstellen</button>';
+    if (navigator.storage && navigator.storage.persist) h += '<p id="schutzText" class="klein">Browser dürfen Daten selten besuchter Seiten von selbst löschen. Mit dem Knopf bittest du den Browser, das hier nicht zu tun.</p>' +
+      '<button class="neben" data-akt="schuetzen" id="schutzKnopf">Lernstand vor dem Löschen durch den Browser schützen</button>';
+    h += '</details>';
     h += '<details class="karte"><summary>Ton für unterwegs</summary><p>Lädt alle Tondateien aufs Gerät, damit sie auch ohne Internet abgespielt werden (' + (Object.keys(KO.dinge).length + Object.keys(KO.gbsp).length) + ' kleine Dateien).</p><button class="neben" data-akt="tonLaden">Alle Tondateien laden</button><p class="klein" id="tonMeldung"></p></details>';
     h += '<details class="karte"><summary>Durchsicht für Muttersprachler</summary><p>Hier kann jemand, der Koreanisch als Muttersprache spricht, Fehler im Text oder im Ton markieren. Der Bericht lässt sich kopieren und weitergeben.</p>' +
       '<label>Lektion<select id="pLek">' + KO.lektionsFolge().sort().map(function (id) { return '<option value="' + id + '"' + (UI.pruefLek === id ? " selected" : "") + '>' + e(KO.lektionen[id].titel) + '</option>'; }).join("") + '</select></label><div id="pListe"></div>' +
@@ -359,6 +386,12 @@ var UI = {
     this.el("ladeDatei").onchange = function () { self.ladeDatei(this.files[0]); this.value = ""; };
     if (!this.pruefLek) this.pruefLek = this.el("pLek").value;
     this.malePruef();
+    if (navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(function (ja) { if (ja) self.schutzAn(); }, function () {});
+  },
+  schutzAn: function () {
+    var t = this.el("schutzText"), k = this.el("schutzKnopf");
+    if (t) t.textContent = "Der Browser hat zugesagt, den Lernstand nicht von selbst zu löschen. Wer die Browserdaten von Hand löscht, löscht ihn trotzdem.";
+    if (k) k.hidden = true;
   },
   malePruef: function () {
     var l = KO.lektionen[this.pruefLek], e = this.esc, P = KO.stand.pruef, box = this.el("pListe");
@@ -384,7 +417,8 @@ var UI = {
     r.onload = function () {
       var s = null; try { s = KO.pruefeStand(JSON.parse(r.result)); } catch (e) { s = null; }
       if (!s) { m.textContent = "Das ist keine gültige Sicherungsdatei dieser App."; return; }
-      KO.stand = s; KO.speichere();
+      KO.kopiere(true);                                // den bisherigen Stand als Kopie aufheben, falls die falsche Datei gewählt wurde
+      KO.stand = s; KO.stand.sich = KO.heute(); KO.kopieTag = KO.heute(); KO.speichere();
       self.male_mehr(); self.el("sichMeldung").textContent = "Geladen: " + Object.keys(s.karten).length + " Lernkarten, " + s.eigene.length + " eigene Karten.";
     };
     r.readAsText(datei);
@@ -392,7 +426,7 @@ var UI = {
 
   // ================= Aktionen =================
   akt: {
-    nav: function (e) { if (this.einheit && e.getAttribute("data-ziel") !== "heute") { this.einheit = null; this.jetzt = null; } this.zeig(e.getAttribute("data-ziel")); },
+    nav: function (e) { if (this.einheit && e.getAttribute("data-ziel") !== "heute") { this.einheit = null; this.jetzt = null; } this.ueb = null; this.zeig(e.getAttribute("data-ziel")); },
     einheit: function () { this.starteEinheit(0); },
     mehrNeue: function () { this.starteEinheit(5); },
     abbruch: function () { this.einheit = null; this.jetzt = null; this.zeig("heute"); },
@@ -449,7 +483,21 @@ var UI = {
       var a = document.createElement("a"), url = URL.createObjectURL(new Blob([JSON.stringify(KO.stand)], { type: "application/json" }));
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-      this.el("sichMeldung").textContent = "Gespeichert als " + name + " (im Download-Ordner).";
+      KO.stand.sich = KO.heute(); KO.speichere();
+      var m = this.el("v-mehr").hidden ? null : this.el("v-mehr").querySelector("#sichMeldung");
+      if (m) m.textContent = "Gespeichert als " + name + " (im Download-Ordner).";
+      else if (!this.el("v-heute").hidden) this.male_heute();
+    },
+    kopieLaden: function (e) {
+      if (e.getAttribute("data-sicher") !== "1" && Object.keys(KO.stand.karten).length) { e.setAttribute("data-sicher", "1"); e.textContent = "Der jetzige Lernstand wird ersetzt. Nochmal tippen."; return; }
+      if (KO.kopieZurueck()) this.zeig("heute");
+    },
+    schuetzen: function (e) {
+      var self = this;
+      navigator.storage.persist().then(function (ja) {
+        if (ja) self.schutzAn();
+        else self.el("schutzText").textContent = "Der Browser hat das abgelehnt oder noch nicht entschieden. Chrome sagt meist erst zu, wenn die Seite als App installiert oder oft besucht ist; Firefox fragt nach. Die Sicherungsdatei schützt in jedem Fall.";
+      }, function () {});
     },
     tonLaden: function (e) {
       var m = this.el("tonMeldung"); e.disabled = true; m.textContent = "Lade …";
@@ -466,7 +514,8 @@ var UI = {
     },
     zurueckSetzen: function (e) {
       if (e.getAttribute("data-sicher") !== "1") { e.setAttribute("data-sicher", "1"); e.textContent = "Wirklich alles löschen? Nochmal tippen."; return; }
-      KO.stand = KO.leer(); KO.speichere(); this.zeig("heute");
+      KO.kopiere(true);                                // letzter Stand bleibt als Kopie im Browser (Mehr → Sichern und Laden)
+      KO.stand = KO.leer(); KO.kopieTag = KO.heute(); KO.speichere(); this.zeig("heute");
     }
   }
 };

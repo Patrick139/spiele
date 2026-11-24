@@ -4,7 +4,9 @@
 // Kennungen: Wort a1-03w5, Satz a1-03s2, eigene Karte e<Zeitstempel>.
 // Lernkarten: <Wort>:r = Koreanisch → Deutsch, <Wort>:p = Deutsch → Koreanisch, <Satz>:s = Satz.
 // Lernstand (localStorage "koreanisch_v1"): karten {Kennung: {s, d, f fällig am Lerntag, l zuletzt, n richtige Wiederholungen, x Fehler}},
-// eigene [], gemerkt {}, pruef {} (Durchsicht), gram {Regel: Lerntag, an dem sie zuletzt angesehen wurde}, einst {neu, auto, deko, pin}, tage {Lerntag: {neu, wdh}}.
+// eigene [], gemerkt {}, pruef {} (Durchsicht), gram {Regel: Lerntag, an dem sie zuletzt angesehen wurde}, einst {neu, auto, deko, pin, ul Länge der Themenübung},
+// tage {Lerntag: {neu, wdh}}, ueb {Thema: {t Lerntag, r auf Anhieb richtig, g Aufgaben}} (letztes Ergebnis der Themenübung), sich Lerntag der letzten Sicherungsdatei.
+// Daneben liegt unter "koreanisch_v1_kopie" eine Kopie des Stands vom Beginn des Tages (siehe kopiere).
 var KO = {
   SCHLUESSEL: "koreanisch_v1", FASSUNG: 1,
   bloecke: [], dinge: {}, lektionen: {}, zeitVersatz: 0, stand: null, reihenCache: {},
@@ -89,7 +91,7 @@ var KO = {
 
   // ---------- Lernstand ----------
   leer: function () {
-    return { v: this.FASSUNG, karten: {}, eigene: [], gemerkt: {}, pruef: {}, tage: {}, gram: {}, einst: { neu: 10, auto: true, deko: true, pin: "" } };
+    return { v: this.FASSUNG, karten: {}, eigene: [], gemerkt: {}, pruef: {}, tage: {}, gram: {}, ueb: {}, sich: 0, einst: { neu: 10, auto: true, deko: true, pin: "", ul: 20 } };
   },
   lade: function () {
     var s = null;
@@ -99,14 +101,43 @@ var KO = {
   pruefeStand: function (s) {
     if (!s || typeof s !== "object" || s.v !== this.FASSUNG || typeof s.karten !== "object") return null;
     var l = this.leer();
-    ["eigene", "gemerkt", "pruef", "tage", "gram"].forEach(function (k) { if (!s[k] || typeof s[k] !== "object") s[k] = l[k]; });
+    ["eigene", "gemerkt", "pruef", "tage", "gram", "ueb"].forEach(function (k) { if (!s[k] || typeof s[k] !== "object") s[k] = l[k]; });
     if (!Array.isArray(s.eigene)) s.eigene = [];
+    if (typeof s.sich !== "number") s.sich = 0;
     s.einst = Object.assign(l.einst, s.einst || {});
     return s;
   },
   speichere: function () {
+    var h = this.heute();
+    if (this.kopieTag !== h) { this.kopiere(false); this.kopieTag = h; }
     try { localStorage.setItem(this.SCHLUESSEL, JSON.stringify(this.stand)); return true; } catch (e) { return false; }
   },
+  // ---------- Kopie im Browser ----------
+  // Einmal am Tag, vor dem ersten Speichern, wandert der bisherige Stand in ein zweites Fach (immer = true: sofort, vor dem Zurücksetzen).
+  // Das hilft nach einem versehentlichen Zurücksetzen oder einem beschädigten Stand. Es hilft nicht, wenn der Browser alle Daten der Seite
+  // löscht; dagegen gibt es die Sicherungsdatei (Mehr → Sichern und Laden).
+  KOPIE: "koreanisch_v1_kopie", kopieTag: -1,
+  kopiere: function (immer) {
+    try {
+      var alt = localStorage.getItem(this.SCHLUESSEL), h = this.heute();
+      if (!alt) return;
+      var k = JSON.parse(localStorage.getItem(this.KOPIE) || "null");
+      if (!immer && k && k.tag === h) return;
+      var s = JSON.parse(alt);
+      if (!s || !s.karten || !Object.keys(s.karten).length) return;      // einen leeren Stand nie über eine brauchbare Kopie schreiben
+      localStorage.setItem(this.KOPIE, JSON.stringify({ tag: h, stand: s }));
+    } catch (e) { /* voller Speicher oder gesperrt: dann eben keine Kopie */ }
+  },
+  kopie: function () {
+    try { var k = JSON.parse(localStorage.getItem(this.KOPIE) || "null"); return k && this.pruefeStand(k.stand) ? k : null; } catch (e) { return null; }
+  },
+  kopieZurueck: function () {
+    var k = this.kopie(); if (!k) return false;
+    this.stand = k.stand; this.kopieTag = this.heute();                  // die Kopie selbst bleibt heute unangetastet
+    try { localStorage.setItem(this.SCHLUESSEL, JSON.stringify(this.stand)); } catch (e) { return false; }
+    return true;
+  },
+  datum: function (tag) { var d = new Date(tag * 86400000); return d.getUTCDate() + "." + (d.getUTCMonth() + 1) + "." + d.getUTCFullYear(); },
   tag: function () {
     var h = this.heute(), t = this.stand.tage;
     if (!t[h]) t[h] = { neu: 0, wdh: 0 };

@@ -762,6 +762,8 @@ document.getElementById("startBtn").addEventListener("click",()=>{
 });
 document.getElementById("sharpTgl").checked=S.sharp;
 syncSharpCtl(); modusUi(); buildKb(); updateHud(); renderStats();
+// Offline-Ablage auch bei direktem Einstieg (Lesezeichen) einrichten
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../../../sw.js").catch(()=>{});
 </script>
 </body>
 </html>
