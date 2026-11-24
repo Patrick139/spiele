@@ -9,7 +9,7 @@
   html,body{margin:0;padding:0;background:#05060a;height:100%;}
   body{display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;}
   #wrap{width:100%;max-width:900px;}
-  canvas{display:block;width:100%;height:auto;background:radial-gradient(ellipse at 50% 40%, #0b1020 0%, #05060a 75%);
+  canvas{display:block;box-sizing:border-box;width:100%;height:auto;background:radial-gradient(ellipse at 50% 40%, #0b1020 0%, #05060a 75%);
          box-shadow:0 0 40px rgba(80,160,255,.15), inset 0 0 60px rgba(0,0,0,.6);
          border:1px solid rgba(120,180,255,.25);}
 </style>
@@ -64,6 +64,7 @@ for (let i = 0; i < 90; i++) stars.push({x: rand(0, W), y: rand(0, H), a: rand(0
 
 /* ---------- Ton (WebAudio) ---------- */
 let AC = null, master = null, muted = false, noiseBuf = null, thrustSrc = null;
+try { muted = localStorage.getItem('asteroids_stumm') === '1'; } catch (e) {}
 function audio() {
   if (!AC) {
     AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -423,6 +424,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM') {
     muted = !muted;
     if (master) master.gain.value = muted ? 0 : 0.5;
+    try { localStorage.setItem('asteroids_stumm', muted ? '1' : '0'); } catch (e2) {}
   }
   if (e.code === 'KeyP' && !e.repeat && (state === 'playing' || state === 'dying')) paused = !paused;
   if (e.code === 'KeyH' && !paused) hyperspace();

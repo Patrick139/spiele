@@ -4,16 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="../../icon.svg" type="image/svg+xml">
-<title>Gitarre – Griffbrett, Noten, Akkorde</title>
+<title>Gitarre – Griffbrett, Noten, Akkorde, Theorie, Lieder</title>
 <!--
-  Gitarre: Ueben fuer (Wieder-)Einsteiger. Drei Uebungen:
+  Gitarre: Ueben fuer (Wieder-)Einsteiger. Fuenf Bereiche:
     Griffbrett  "Wo liegt das G auf der A-Saite?" (antippen) und "Welcher Ton ist das?" (Name waehlen)
     Noten       Note im Violinschluessel mit 8 (Gitarre klingt eine Oktave tiefer als notiert) -> eine passende Stelle antippen
     Akkorde     Name -> Griffbild, Griffbild -> Name; mit angeschlossener Gitarre auch "Spiel G"
+    Theorie     Halb- und Ganztoene: Erklaerung, Stammtoene je Saite zeigen, Aufgaben in vier Stufen
+    Lieder      fuenf einfache Melodien als Tabulatur, Ton fuer Ton nachspielen (Daten: ../lieder.js)
+  Das Griffbrett laesst sich drehen: Tabulatur (hohe e-Saite oben), Spielersicht (tiefe E-Saite oben, wie beim Blick
+  auf die eigene Gitarre) oder hochkant (wie im Akkordbild).
   Antworten per Tippen oder mit der echten Gitarre (Mikrofon oder Audio-Interface): Einzeltoene per YIN-Tonhoehenerkennung,
   Akkorde ueber die Verteilung der Energie auf die zwoelf Tonklassen. Dazu ein Stimmgeraet. Der Ton bleibt im Browser.
   Stufen je Uebung (1-4), steigt nach 5 Aufgaben hintereinander auf Anhieb richtig; oben auch frei waehlbar.
-  Deutsche Tonnamen (H statt B). Keine externen Dateien ausser ../../zurueck.js.
+  Deutsche Tonnamen (H statt B). Externe Dateien: nur ../lieder.js und ../../zurueck.js.
 -->
 <style>
   :root { --papier: #f5eedf; --karte: #fffaf0; --tinte: #2e261d; --sanft: #76685a; --rand: #e2d4ba; --akzent: #c4572a; --akzent2: #e8935f;
@@ -61,6 +65,31 @@
   @media (max-width: 599px) { #bild > svg { max-width: 300px; } }
   #bild > svg.griff { max-width: 210px; }
   #brettBox { margin-top: 8px; }
+  #ansichtZeile { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; color: var(--sanft); font-size: 13.5px; }
+  #ansichtKnopf { padding: 5px 10px; font-size: 13.5px; }
+  #brett.hoch { max-width: 380px; margin: 0 auto; }
+  #brett .punkt.halb circle { fill: var(--gelb); } #brett .punkt.halb text { fill: var(--tinte); }
+  /* Theorie */
+  #theorie { margin: 10px 0 4px; font-size: 15px; line-height: 1.5; }
+  #theorie summary { font-weight: 800; cursor: pointer; }
+  #theorie p { margin: 8px 0; }
+  #leiter { display: flex; align-items: center; justify-content: center; margin: 12px 0 4px; font-weight: 800; }
+  #leiter b { width: 32px; height: 32px; border-radius: 50%; background: var(--akzent2); color: #fff; display: grid; place-items: center; flex: none; }
+  #leiter i { font-style: normal; font-size: 12px; color: var(--sanft); text-align: center; border-bottom: 2px solid var(--rand); margin: 0 2px 10px; flex: 1 1 0; max-width: 46px; }
+  #leiter i.halb { color: var(--akzent); border-color: var(--akzent); flex: 0.45 1 0; }
+  #leiterText { text-align: center; color: var(--sanft); font-size: 13px; margin: 0 0 8px; }
+  .reihe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .reihe.mitte { justify-content: center; margin: 8px 0; }
+  .reihe .knopf.rund { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
+  /* Lieder */
+  #liedWahl { font: inherit; font-size: 15px; font-weight: 700; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--rand); background: var(--karte); color: var(--tinte);
+    width: 100%; max-width: 380px; margin: 4px 0 2px; }
+  #tabBox svg { width: 100%; height: auto; display: block; }
+  #tabBox .zahl { font-weight: 800; font-size: 15px; fill: var(--tinte); }
+  #tabBox .name { font-size: 12px; font-weight: 700; fill: var(--sanft); }
+  #tabBox .fertig .zahl, #tabBox .fertig .name { fill: var(--gut); }
+  #tabBox .jetzt .hg { fill: var(--gelb); stroke: var(--akzent); }
+  #tabBox .hg { fill: var(--papier); stroke: none; stroke-width: 1.5; }
   #brett { width: 100%; height: auto; display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
   #brett .zelle { fill: transparent; cursor: pointer; }
   #brett .zelle:hover { fill: rgba(255, 255, 255, .07); }
@@ -94,7 +123,7 @@
 <body>
 <div id="wrap">
   <header>
-    <h1>🎸 Gitarre <small>Griffbrett · Noten · Akkorde</small></h1>
+    <h1>🎸 Gitarre <small>Griffbrett · Noten · Akkorde · Theorie · Lieder</small></h1>
     <button class="knopf" id="gitKnopf">🎸 Gitarre anschließen</button>
   </header>
 
@@ -119,12 +148,44 @@
     <button class="knopf an" data-modus="griff">Griffbrett</button>
     <button class="knopf" data-modus="noten">Noten</button>
     <button class="knopf" data-modus="akk">Akkorde</button>
+    <button class="knopf" data-modus="theo">Theorie</button>
+    <button class="knopf" data-modus="lied">Lieder</button>
   </nav>
-  <div class="stufen"><span>Stufe</span><span id="stufenKnoepfe"></span><span id="stufenText"></span></div>
+  <div class="stufen" id="stufenZeile"><span>Stufe</span><span id="stufenKnoepfe"></span><span id="stufenText"></span></div>
+
+  <section id="theorie" class="karte weg">
+    <details id="theoText" open>
+      <summary>Halbtöne und Ganztöne – kurz erklärt</summary>
+      <p>Von einem Bund zum nächsten ist es ein <b>Halbton</b>. Zwei Bünde sind ein <b>Ganzton</b>.</p>
+      <p>Zwischen den Stammtönen C D E F G A H liegt meistens ein Ganzton. Nur an zwei Stellen liegt ein Halbton:
+        zwischen <b>E und F</b> und zwischen <b>H und C</b>.</p>
+      <div id="leiter" aria-hidden="true"></div>
+      <p id="leiterText">1 = Ganzton (zwei Bünde) · ½ = Halbton (ein Bund)</p>
+      <p>Auf dem Griffbrett: von E zu F und von H zu C geht es einen Bund weiter, bei allen anderen Nachbarn zwei Bünde.
+        In dem übersprungenen Bund liegt ein Ton mit ♯ oder ♭, zum Beispiel Fis/Ges zwischen F und G.
+        Am Klavier fehlt zwischen E und F und zwischen H und C die schwarze Taste.</p>
+      <p>Die Dur-Tonleiter hat immer dasselbe Muster: Ganz – Ganz – Halb – Ganz – Ganz – Ganz – Halb.
+        Von C aus ergibt das genau die Stammtöne. Von einem anderen Ton aus braucht man dafür ♯ oder ♭ (G-Dur: Fis statt F).</p>
+    </details>
+    <div class="reihe" style="margin-top:8px"><span>Stammtöne zeigen auf der Saite</span><span id="theoSaiten" class="reihe"></span></div>
+  </section>
+
+  <section id="liedBox" class="weg">
+    <select id="liedWahl" aria-label="Lied wählen"></select>
+    <div id="tabBox"></div>
+    <div class="reihe mitte">
+      <button class="knopf" id="liedVor">▶ Vorspielen</button>
+      <button class="knopf" id="liedNeu">↺ Von vorn</button>
+      <button class="knopf" id="liedHilfe">Stelle zeigen</button>
+    </div>
+  </section>
 
   <div id="aufgabe"></div>
   <div id="bild"></div>
-  <div id="brettBox"><svg id="brett" aria-label="Griffbrett"></svg></div>
+  <div id="brettBox">
+    <div id="ansichtZeile"><button class="knopf" id="ansichtKnopf" title="Griffbrett drehen">⟳ Ansicht</button><span id="ansichtText"></span></div>
+    <svg id="brett" aria-label="Griffbrett"></svg>
+  </div>
   <div id="wahl"></div>
   <div id="rueck"></div>
   <div id="statistik"></div>
@@ -132,6 +193,7 @@
 </div>
 <div id="toast"></div>
 
+<script src="../lieder.js"></script>
 <script>
 (function () {
 "use strict";
@@ -202,17 +264,24 @@ const STUFEN = {
     { t: "offene Dur-Akkorde: C G D A E", l: AKK1 },
     { t: "dazu Moll: Am Em Dm", l: AKK2 },
     { t: "dazu Powerchords (E5 A5 G5 C5 D5) und Septakkorde", l: AKK3 },
-    { t: "dazu Barré: F Fm F♯m Hm H Cm", l: AKK3.concat(["F", "Fm", "F♯m", "Hm", "H", "Cm"]) }]
+    { t: "dazu Barré: F Fm F♯m Hm H Cm", l: AKK3.concat(["F", "Fm", "F♯m", "Hm", "H", "Cm"]) }],
+  theo: [
+    { t: "Halbton oder Ganzton zwischen zwei Nachbarn?" },
+    { t: "den nächsten Stammton auf der Saite finden" },
+    { t: "Halbton und Ganzton über und unter einem Stammton" },
+    { t: "von jedem Ton aus, dazu Dur-Tonleitern" }]
 };
 const HILFE = {
   griff: "Wo liegt …? Auf der hervorgehobenen Saite den Bund antippen (oder spielen). Welcher Ton ist das? Den Namen wählen (oder spielen).",
   noten: "Gitarrennoten klingen eine Oktave tiefer als notiert (die kleine 8 unter dem Schlüssel). Jede Stelle mit dem richtigen Ton zählt.",
-  akk: "× = Saite nicht anschlagen, ○ = leere Saite, Zahlen = Finger (1 Zeigefinger … 4 kleiner Finger), Balken = Barré."
+  akk: "× = Saite nicht anschlagen, ○ = leere Saite, Zahlen = Finger (1 Zeigefinger … 4 kleiner Finger), Balken = Barré.",
+  theo: "Ein Bund = Halbton, zwei Bünde = Ganzton. E–F und H–C sind Halbtöne, alle anderen Nachbarn unter den Stammtönen sind Ganztöne.",
+  lied: "Tabulatur: sechs Linien = sechs Saiten (oben die hohe e-Saite), die Zahl ist der Bund, 0 = leere Saite. Der Reihe nach jeden Ton antippen oder spielen."
 };
 
 // ================= Zustand =================
 const Z = { modus: "griff", aufg: null, frei: false, erster: true, wdh: false, gen: 0, wiederhole: null, gefragt: 0, anhieb: 0,
-  git: false, G: null, brettBis: 5, stummBis: 0 };
+  git: false, G: null, brettBis: 5, stummBis: 0, lied: null };
 function lies(k, std) { try { const v = JSON.parse(localStorage.getItem("gitarre_" + k)); return v == null ? std : v; } catch (e) { return std; } }
 function schreib(k, v) { try { localStorage.setItem("gitarre_" + k, JSON.stringify(v)); } catch (e) {} }
 const stufe = () => Math.min(4, Math.max(1, +lies("stufe_" + Z.modus, 1) || 1));
@@ -238,10 +307,11 @@ function saitenPuffer(m) {
   return (PUFFER[m] = buf);
 }
 function zupfe(m, wann, laut) {
-  const a = ac(); if (!a) return;
+  const a = ac(); if (!a) return null;
   const q = a.createBufferSource(), g = a.createGain(), t = a.currentTime + (wann || 0);
   q.buffer = saitenPuffer(m); g.gain.value = laut || 0.32; q.connect(g); g.connect(a.destination); q.start(t);
   Z.stummBis = Math.max(Z.stummBis, t + 1.3);            // eigene Klaenge nicht als gespielten Ton werten (Mikrofon)
+  return q;
 }
 function schlage(name) { let i = 0; AKK[name].g.split("").forEach((c, s) => { if (c !== "x") zupfe(STIMMUNG[s] + (+c), 0.035 * i++, 0.2); }); }
 function ton(f, dauer, typ, laut, wann) {
@@ -255,23 +325,34 @@ const klangGut = () => { ton(880, 0.14, "sine", 0.12); ton(1320, 0.2, "sine", 0.
 const klangSchlecht = () => ton(150, 0.28, "triangle", 0.14);
 
 // ================= Griffbrett =================
-// u = Laenge entlang des Halses (0 = Sattel), v = quer ueber die Saiten. Hochkant am Handy senkrecht (tiefe E-Saite links, wie im Akkordbild),
-// sonst waagrecht (hohe e-Saite oben, wie in Tabulaturen).
+// u = Laenge entlang des Halses (0 = Sattel), v = quer ueber die Saiten. Drei Ansichten, oben am Griffbrett umschaltbar:
+//   tab      waagrecht, hohe e-Saite oben (wie in Tabulaturen)
+//   spieler  waagrecht, tiefe E-Saite oben (so sieht man das Griffbrett, wenn man die Gitarre haelt und von oben draufschaut)
+//   hoch     senkrecht, tiefe E-Saite links (wie im Akkordbild)
+// Ohne eigene Wahl ("auto"): hochkant am Handy senkrecht, sonst Tabulatur.
+const ANSICHTEN = { tab: "Tabulatur: hohe e-Saite oben", spieler: "Spielersicht: tiefe E-Saite oben, wie beim Blick auf die eigene Gitarre", hoch: "Hochkant: wie im Akkordbild" };
+function ansicht() {
+  const a = lies("ansicht", "auto");
+  if (a in ANSICHTEN) return a;
+  return window.matchMedia("(max-width: 599px) and (orientation: portrait)").matches ? "hoch" : "tab";
+}
 function geometrie(bis) {
-  const hoch = window.matchMedia("(max-width: 599px) and (orientation: portrait)").matches;
-  if (hoch) {
+  const art = ansicht(), schmal = window.matchMedia("(max-width: 599px)").matches, key = art + (schmal ? "s" : "b");
+  if (art === "hoch") {
     const W = 340, links = 50, sg = (W - links - 30) / 5, offen = 44, oben = 26, bw = bis <= 5 ? 56 : bis <= 8 ? 44 : 36;
-    return { hoch: true, W: W, H: oben + offen + bis * bw + 10, sg: sg, offen: offen, bw: bw, xy: (u, v) => [links + v, oben + offen + u], v: s => s * sg,
+    return { art: art, key: key, hoch: true, W: W, H: oben + offen + bis * bw + 10, sg: sg, offen: offen, bw: bw, xy: (u, v) => [links + v, oben + offen + u], v: s => s * sg,
       nr: f => [14, oben + offen + (f - 0.5) * bw + 5], sn: s => [links + s * sg, 17] };
   }
-  const W = 820, links = 40, sg = 30, offen = 46, oben = 16, bw = (W - links - offen - 12) / bis;
-  return { hoch: false, W: W, H: oben + 5 * sg + 44, sg: sg, offen: offen, bw: bw, xy: (u, v) => [links + offen + u, oben + 12 + v], v: s => (5 - s) * sg,
-    nr: f => [links + offen + (f - 0.5) * bw, oben + 12 + 5 * sg + 30], sn: s => [18, oben + 12 + (5 - s) * sg + 5] };
+  const W = schmal ? 430 : 820, links = schmal ? 24 : 40, sg = 30, offen = schmal ? 34 : 46, oben = 16, bw = (W - links - offen - 12) / bis;
+  const reihe = s => art === "spieler" ? s : 5 - s;
+  return { art: art, key: key, hoch: false, W: W, H: oben + 5 * sg + 44, sg: sg, offen: offen, bw: bw, xy: (u, v) => [links + offen + u, oben + 12 + v], v: s => reihe(s) * sg,
+    nr: f => [links + offen + (f - 0.5) * bw, oben + 12 + 5 * sg + 30], sn: s => [schmal ? 11 : 18, oben + 12 + reihe(s) * sg + 5] };
 }
 const uMitte = (G, f) => f === 0 ? -G.offen / 2 : (f - 0.5) * G.bw;
 function brettZeichnen() {
   const bis = Z.brettBis, G = geometrie(bis), svg = $("brett");
   Z.G = G; svg.setAttribute("viewBox", "0 0 " + G.W + " " + G.H); svg.innerHTML = "";
+  svg.classList.toggle("hoch", G.hoch); $("ansichtText").textContent = ANSICHTEN[G.art];
   const P = (u, v) => G.xy(u, v);
   const rect = (u0, u1, v0, v1, a) => { const p = P(u0, v0), q = P(u1, v1); return el("rect", Object.assign({ x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), width: Math.abs(q[0] - p[0]), height: Math.abs(q[1] - p[1]) }, a)); };
   const linie = (u0, v0, u1, v1, a) => { const p = P(u0, v0), q = P(u1, v1); return el("line", Object.assign({ x1: p[0], y1: p[1], x2: q[0], y2: q[1] }, a)); };
@@ -362,12 +443,18 @@ function statistik() { $("statistik").textContent = Z.gefragt ? "Auf Anhieb rich
 function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("zeigen"); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove("zeigen"), 2200); }
 const oderSpielen = () => Z.git ? " – oder spiel es" : "";
 
+function bereiche() {
+  $("brettBox").classList.toggle("weg", Z.modus === "akk");
+  $("theorie").classList.toggle("weg", Z.modus !== "theo");
+  $("liedBox").classList.toggle("weg", Z.modus !== "lied");
+}
 function neueAufgabe() {
+  bereiche();
+  if (Z.modus === "lied") { if (!Z.lied) liedLaden(lies("lied", "")); liedZeigen(); return Z.gen; }
   const gen = ++Z.gen, st = S();
   Z.frei = true; Z.erster = true;
   rueck(""); $("bild").innerHTML = ""; $("wahl").innerHTML = "";
   let A = Z.wiederhole; Z.wdh = !!A; Z.wiederhole = null;
-  $("brettBox").classList.toggle("weg", Z.modus === "akk");
   if (Z.modus === "griff") {
     brettBereich(st.bis); markenWeg(); saiteHervor(-1);
     if (!A) {
@@ -402,6 +489,10 @@ function neueAufgabe() {
     }
     $("bild").appendChild(notenBild(A.e));
     aufgabeText("Wo spielst du diese Note?", "eine passende Stelle antippen" + oderSpielen());
+  } else if (Z.modus === "theo") {
+    brettBereich(12); markenWeg(); saiteHervor(-1);
+    if (!A) A = theoAufgabe(stufe());
+    theoStellen(A);
   } else {
     const L = st.l;
     if (!A) {
@@ -442,8 +533,8 @@ function gewertet(ok) {
   Z.erster = false;
   statistik();
 }
-function richtig(text) { Z.frei = false; gewertet(true); klangGut(); rueck(text, "gut"); weiter(1500); }
-function falsch(text, wiederholen) { Z.frei = false; gewertet(false); klangSchlecht(); rueck(text, "schlecht"); if (wiederholen) Z.wiederhole = Z.aufg; weiter(2700); }
+function richtig(text, ms) { Z.frei = false; gewertet(true); klangGut(); rueck(text, "gut"); weiter(ms || 1500); }
+function falsch(text, wiederholen, ms) { Z.frei = false; gewertet(false); klangSchlecht(); rueck(text, "schlecht"); if (wiederholen) Z.wiederhole = Z.aufg; weiter(ms || 2700); }
 
 // --- Antworten per Tippen ---
 // m = gespielter Ton; s/f = angetippte Stelle (null, wenn er von der Gitarre kommt)
@@ -491,14 +582,221 @@ function antwortAkk(n, knopf) {
     falsch("Das war " + n + ". Gesucht war <b>" + A.ziel + "</b> (" + AKK[A.ziel].n + ").", true);
   }
 }
+
+// ================= Theorie: Halb- und Ganztoene =================
+const HG = { 1: "Halbton", 2: "Ganzton" }, BUENDE = { 1: "ein Bund", 2: "zwei Bünde" };
+const DUR = [2, 2, 1, 2, 2, 2, 1], TONARTEN = [[0, "k"], [7, "k"], [2, "k"], [9, "k"], [4, "k"], [5, "b"]];     // C G D A E F
+const nachbar = (pc, auf) => NATUR[(NATUR.indexOf(pc) + (auf ? 1 : 6)) % 7];
+function stammBuende(s) { const r = []; for (let f = 0; f <= 12; f++) if (NATUR.indexOf(pcVon(STIMMUNG[s] + f)) >= 0) r.push(f); return r; }
+function theoAufgabe(n) {
+  const alt = Z.aufg; let A, k = 0;
+  do {
+    const auf = Math.random() < 0.6;
+    if (n === 1) {
+      const pc = zufall(NATUR), z = nachbar(pc, auf);
+      A = { typ: "hg", pc: pc, auf: auf, ziel: z, schritt: pcVon(auf ? z - pc : pc - z) };
+    } else if (n === 2) {
+      const s = zufall(ALLE6), fs = stammBuende(s), i = Math.floor(Math.random() * (fs.length - 1)) + (auf ? 0 : 1), f2 = fs[i + (auf ? 1 : -1)];
+      A = { typ: "nah", s: s, f: fs[i], f2: f2, auf: auf, pc: pcVon(STIMMUNG[s] + fs[i]), ziel: pcVon(STIMMUNG[s] + f2), schritt: Math.abs(f2 - fs[i]) };
+    } else if (n === 4 && Math.random() < 0.4) {
+      const ta = zufall(TONARTEN), pcs = [ta[0]];
+      DUR.forEach(d => pcs.push(pcVon(pcs[pcs.length - 1] + d)));
+      const nr = 1 + Math.floor(Math.random() * 6);                    // nie der Grundton
+      A = { typ: "leiter", pc: ta[0], art: ta[1], pcs: pcs, nr: nr, ziel: pcs[nr] };
+    } else {
+      const pc = n === 3 ? zufall(NATUR) : Math.floor(Math.random() * 12), schritt = zufall([1, 2]);
+      A = { typ: "ueber", pc: pc, auf: auf, schritt: schritt, ziel: pcVon(pc + (auf ? schritt : -schritt)), art: zufall(["k", "b"]) };
+    }
+  } while (alt && alt.typ === A.typ && alt.pc === A.pc && alt.auf === A.auf && alt.nr === A.nr && alt.s === A.s && ++k < 20);
+  return A;
+}
+function theoStellen(A) {
+  const wahlKnopf = (text, wert, lang) => {
+    const b = document.createElement("button"); b.className = "knopf ton" + (lang ? " lang" : ""); b.textContent = text; b.dataset.w = wert;
+    b.onclick = () => antwortTheo(wert, b); $("wahl").appendChild(b);
+  };
+  const namen12 = () => { for (let pc = 0; pc < 12; pc++) wahlKnopf(tonName(pc, "beide"), pc, !(pc in NAT)); };
+  if (A.typ === "hg") {
+    aufgabeText("Von " + NAT[A.pc] + (A.auf ? " hinauf zu " : " hinunter zu ") + NAT[A.ziel] + ":", "Halbton oder Ganzton?");
+    wahlKnopf("Halbton", 1, true); wahlKnopf("Ganzton", 2, true);
+  } else if (A.typ === "nah") {
+    saiteHervor(A.s); marke(A.s, A.f, NAT[A.pc], "ziel");
+    aufgabeText("Wo liegt der nächste Stammton " + (A.auf ? "über" : "unter") + " " + NAT[A.pc] + "?", "auf der " + SAITE_TEXT[A.s] + " antippen" + oderSpielen());
+  } else if (A.typ === "ueber") {
+    aufgabeText("Welcher Ton liegt einen " + HG[A.schritt] + " " + (A.auf ? "über" : "unter") + " " + tonName(A.pc, A.art) + "?", "Namen wählen" + oderSpielen());
+    namen12();
+  } else {
+    aufgabeText(tonName(A.pc, A.art) + "-Dur: Welcher Ton fehlt?", A.pcs.map((pc, i) => i === A.nr ? "▢" : tonName(pc, A.art)).join("  "));
+    namen12();
+  }
+}
+// beide Toene eines Schritts auf einer Saite zeigen (moeglichst nah am Sattel) und nacheinander anspielen
+function schrittZeigen(pcTief, schritt, art) {
+  let s = 0, f = 99;
+  for (let i = 0; i < 6; i++) { const ff = pcVon(pcTief - STIMMUNG[i]); if (ff < f) { f = ff; s = i; } }
+  markenWeg(); saiteHervor(s);
+  marke(s, f, tonName(pcTief, art), "gut"); marke(s, f + schritt, tonName(pcTief + schritt, art), "gut");
+  zupfe(STIMMUNG[s] + f, 0, 0.28); zupfe(STIMMUNG[s] + f + schritt, 0.42, 0.28);
+}
+function antwortTheo(w, knopf) {
+  if (!Z.frei) return;
+  const A = Z.aufg, art = A.art || "k", ok = w === (A.typ === "hg" ? A.schritt : A.ziel);
+  document.querySelectorAll("#wahl .ton").forEach(b => { if (+b.dataset.w === (A.typ === "hg" ? A.schritt : A.ziel)) b.classList.add("richtig"); else if (b === knopf) b.classList.add("falsch"); });
+  let satz;
+  if (A.typ === "hg") {
+    const tief = A.auf ? A.pc : A.ziel;
+    schrittZeigen(tief, A.schritt, "k");
+    satz = NAT[A.pc] + " → " + NAT[A.ziel] + " ist ein <b>" + HG[A.schritt] + "</b>: " + BUENDE[A.schritt] + ". " + (A.schritt === 2 ? "Dazwischen liegt " + tonName(tief + 1, "beide") + "." : "Dazwischen liegt kein Ton.");
+  } else if (A.typ === "ueber") {
+    schrittZeigen(A.auf ? A.pc : A.ziel, A.schritt, art);
+    satz = "Einen " + HG[A.schritt] + " " + (A.auf ? "über" : "unter") + " " + tonName(A.pc, art) + " liegt <b>" + tonName(A.ziel, "beide") + "</b> (" + BUENDE[A.schritt] + ").";
+  } else {
+    satz = tonName(A.pc, art) + "-Dur: " + A.pcs.map((pc, i) => i === A.nr ? "<b>" + tonName(pc, art) + "</b>" : tonName(pc, art)).join(" ") + ". Muster: Ganz Ganz Halb Ganz Ganz Ganz Halb.";
+  }
+  if (ok) richtig("<b>Richtig!</b> " + satz, 2800); else falsch(satz, true, 4200);
+}
+function antwortNah(m, s, f) {
+  if (!Z.frei) return;
+  const A = Z.aufg, ok = m === STIMMUNG[A.s] + A.f2 && (s == null || s === A.s);
+  markenWeg(); marke(A.s, A.f, NAT[A.pc], "ziel"); marke(A.s, A.f2, NAT[A.ziel], "gut");
+  const satz = (A.auf ? "Über " : "Unter ") + NAT[A.pc] + " liegt " + NAT[A.ziel] + ": ein <b>" + HG[A.schritt] + "</b>, " + BUENDE[A.schritt] + (A.auf ? " höher." : " tiefer.");
+  if (ok) { richtig("<b>Richtig!</b> " + satz, 2400); return; }
+  if (s != null) marke(s, f, tonName(m, "k"), "schlecht");
+  falsch((s == null ? "Gespielt: " + hoehe(m) + ". " : "") + satz, true, 3800);
+}
+function stammtoeneZeigen(s) {
+  brettBereich(12); markenWeg(); saiteHervor(s);
+  const fs = stammBuende(s);
+  fs.forEach((f, i) => {
+    const halb = (i > 0 && f - fs[i - 1] === 1) || (i < fs.length - 1 && fs[i + 1] - f === 1);
+    marke(s, f, NAT[pcVon(STIMMUNG[s] + f)], halb ? "halb" : "");
+    zupfe(STIMMUNG[s] + f, i * 0.26, 0.24);
+  });
+  const A = Z.aufg;
+  if (Z.frei && A && A.typ === "nah" && A.s !== s) marke(A.s, A.f, NAT[A.pc], "ziel");
+  rueck(SAITE[s] + "-Saite: gelb sind die Halbtonschritte E–F und H–C (ein Bund). Alle anderen Nachbarn liegen zwei Bünde auseinander.");
+}
+
+// ================= Lieder =================
+// Melodien aus ../lieder.js, gespielt in der ersten Lage (Bund 0 bis 3). Das "c" der Melodie ist das klingende c auf der A-Saite, 3. Bund.
+const LIED_C = 48;
+function lage1(m) { return lagen(m, 5).sort((a, b) => a.f - b.f)[0]; }
+function liedStopp() {
+  const L = Z.lied; if (!L) return;
+  L.quellen.forEach(q => { try { if (q) q.stop(); } catch (e) { /* schon zu Ende */ } });
+  L.zeiten.forEach(clearTimeout);
+  L.quellen = []; L.zeiten = [];
+  if (L.spielt >= 0 && AC) Z.stummBis = AC.currentTime + 0.3;
+  L.spielt = -1;
+}
+function liedLaden(id) {
+  const lied = LIEDER.finde(id) || LIEDER.liste[0];
+  liedStopp();
+  Z.lied = { id: lied.id, titel: lied.titel, tempo: lied.tempo, t: LIEDER.toene(lied, LIED_C), pos: 0, fehler: 0, spielt: -1, quellen: [], zeiten: [] };
+  Z.lied.t.forEach(n => { n.lage = lage1(n.m); });
+  schreib("lied", lied.id); rueck("");
+}
+function tabZeichnen() {
+  const L = Z.lied, schmal = window.matchMedia("(max-width: 599px)").matches, tpz = schmal ? 2 : 4, W = schmal ? 400 : 820;
+  const bei = Math.min(L.t.length - 1, L.spielt >= 0 ? L.spielt : L.pos), zeile = Math.floor(L.t[bei].takt / tpz), takte = L.t[L.t.length - 1].takt + 1;
+  const links = 30, tb = (W - links - 8) / tpz, oben = 34, lg = 16, svg = el("svg", { viewBox: "0 0 " + W + " " + (oben + 5 * lg + 30), role: "img", "aria-label": "Tabulatur" });
+  for (let i = 0; i < 6; i++) {
+    svg.appendChild(el("line", { x1: links, x2: W - 8, y1: oben + i * lg, y2: oben + i * lg, stroke: "#b9aa90", "stroke-width": 1.3 }));
+    svg.appendChild(el("text", { x: 13, y: oben + i * lg + 4.5, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#76685a" }, SAITE[5 - i]));
+  }
+  for (let k = 0; k <= tpz; k++) svg.appendChild(el("line", { x1: links + k * tb, x2: links + k * tb, y1: oben, y2: oben + 5 * lg, stroke: "#76685a", "stroke-width": 1.5 }));
+  // Platz je Ton nach Dauer, aber nicht streng im Verhaeltnis, damit Achtel nicht zusammenstossen
+  const platz = d => d <= 0.5 ? 0.7 : d <= 1 ? 1 : d <= 1.5 ? 1.3 : d <= 2 ? 1.5 : 2.2, summe = {};
+  L.t.forEach(n => { summe[n.takt] = (summe[n.takt] || 0) + platz(n.dauer); });
+  let schlag = 0, takt = -1;
+  L.t.forEach((n, i) => {
+    if (n.takt !== takt) { takt = n.takt; schlag = 0; }
+    const vor = schlag; schlag += platz(n.dauer);
+    if (Math.floor(n.takt / tpz) !== zeile) return;
+    const x = links + (n.takt % tpz) * tb + 16 + vor / summe[n.takt] * (tb - 20), y = oben + (5 - n.lage.s) * lg;
+    const g = el("g", { class: L.spielt < 0 && i < L.pos ? "fertig" : i === bei ? "jetzt" : "" });
+    g.appendChild(el("circle", { cx: x, cy: y, r: 9.5, class: "hg" }));
+    g.appendChild(el("text", { x: x, y: y + 5.2, "text-anchor": "middle", class: "zahl" }, n.lage.f));
+    g.appendChild(el("text", { x: x, y: oben - 14, "text-anchor": "middle", class: "name" }, n.name));
+    svg.appendChild(g);
+  });
+  svg.appendChild(el("text", { x: W - 8, y: oben + 5 * lg + 22, "text-anchor": "end", "font-size": 12, fill: "#76685a" },
+    "Takt " + (zeile * tpz + 1) + " bis " + Math.min(takte, zeile * tpz + tpz) + " von " + takte));
+  $("tabBox").innerHTML = ""; $("tabBox").appendChild(svg);
+}
+function liedZeigen() {
+  const L = Z.lied, fertig = lies("lieder", {}), hilfe = !!lies("liedHilfe", true), zuEnde = L.pos >= L.t.length;
+  Z.gen++;                                                           // offene Zeitgeber der anderen Uebungen laufen ins Leere
+  const wahl = $("liedWahl");
+  if (!wahl.options.length) LIEDER.liste.forEach(l => { const o = document.createElement("option"); o.value = l.id; wahl.appendChild(o); });
+  LIEDER.liste.forEach((l, i) => { wahl.options[i].textContent = (l.id in fertig ? "✓ " : "") + l.titel; });
+  wahl.value = L.id;
+  $("liedHilfe").classList.toggle("an", hilfe);
+  $("liedVor").textContent = L.spielt >= 0 ? "■ Stopp" : "▶ Vorspielen";
+  $("bild").innerHTML = ""; $("wahl").innerHTML = "";
+  brettBereich(5); markenWeg(); saiteHervor(-1);
+  tabZeichnen();
+  const n = L.t[L.spielt >= 0 ? L.spielt : L.pos];
+  if (L.spielt >= 0) { aufgabeText("Zuhören", "das Lied wird vorgespielt"); marke(n.lage.s, n.lage.f, n.name, "ziel"); }
+  else if (zuEnde) {
+    aufgabeText("Geschafft", L.fehler ? "Fehler: " + L.fehler : "ohne Fehler");
+    const knopf = (text, tun) => { const b = document.createElement("button"); b.className = "knopf"; b.textContent = text; b.onclick = tun; $("wahl").appendChild(b); };
+    knopf("Nochmal", () => { liedLaden(L.id); liedZeigen(); });
+    knopf("Nächstes Lied", () => { const i = LIEDER.liste.findIndex(x => x.id === L.id); liedLaden(LIEDER.liste[(i + 1) % LIEDER.liste.length].id); liedZeigen(); });
+  } else {
+    aufgabeText("Ton " + (L.pos + 1) + " von " + L.t.length + (L.fehler ? " · Fehler: " + L.fehler : ""), "den gelb markierten Ton antippen" + oderSpielen());
+    if (hilfe) marke(n.lage.s, n.lage.f, n.name, "ziel");
+  }
+  Z.aufg = { typ: "lied" }; Z.frei = L.spielt < 0 && !zuEnde;
+  $("hilfe").textContent = HILFE.lied; $("statistik").textContent = "";
+}
+// m = gespielter Ton; s/f = angetippte Stelle (null, wenn er von der Gitarre kommt). Jede Stelle mit der richtigen Tonhoehe zaehlt.
+function liedAntwort(m, s, f) {
+  const L = Z.lied;
+  if (!L || !Z.frei || L.spielt >= 0 || L.pos >= L.t.length) return;
+  const n = L.t[L.pos], wo = SAITE[n.lage.s] + "-Saite, " + (n.lage.f ? "Bund " + n.lage.f : "leer");
+  if (m === n.m) {
+    L.pos++; rueck("");
+    if (L.pos >= L.t.length) {
+      const fertig = lies("lieder", {});
+      if (!(L.id in fertig) || L.fehler < fertig[L.id]) { fertig[L.id] = L.fehler; schreib("lieder", fertig); }
+      setTimeout(klangGut, 600);
+      rueck("<b>Geschafft!</b> „" + L.titel + "“ " + (L.fehler ? "mit " + L.fehler + (L.fehler === 1 ? " Fehler." : " Fehlern.") : "ohne Fehler."), "gut");
+    }
+    liedZeigen();
+    return;
+  }
+  L.fehler++;
+  liedZeigen();
+  if (s != null) marke(s, f, tonName(m, "k"), "schlecht");
+  rueck((s == null ? "Gespielt: " + hoehe(m) + ". " : "Das war " + tonName(m, "k") + ". ") + "Gesucht ist <b>" + n.name + "</b>: " + wo + ".", "schlecht");
+}
+function liedVorspielen() {
+  const L = Z.lied;
+  if (L.spielt >= 0) { liedStopp(); liedZeigen(); return; }
+  if (!ac()) return;
+  const sek = 60 / L.tempo; let t = 0.15;
+  rueck(""); L.spielt = 0;
+  L.t.forEach((n, i) => {
+    L.quellen.push(zupfe(n.m, t, 0.3));
+    L.zeiten.push(setTimeout(() => { L.spielt = i; liedZeigen(); }, t * 1000));
+    t += n.dauer * sek;
+  });
+  L.zeiten.push(setTimeout(() => { L.spielt = -1; L.quellen = []; L.zeiten = []; liedZeigen(); }, t * 1000 + 700));
+  liedZeigen();
+}
+
 $("brett").addEventListener("pointerdown", ev => {
   const z = ev.target.closest && ev.target.closest(".zelle"); if (!z) return;
   ev.preventDefault(); ac();
   const s = +z.dataset.s, f = +z.dataset.f, m = STIMMUNG[s] + f;
+  if (Z.modus === "lied" && Z.lied && Z.lied.spielt >= 0) return;      // waehrend des Vorspielens nicht dazwischenklimpern
   zupfe(m);
   if (!Z.frei || !Z.aufg) return;
   if (Z.modus === "griff" && Z.aufg.typ === "wo") antwortWo(m, s, f);
   else if (Z.modus === "noten") antwortNote(m, s, f);
+  else if (Z.modus === "theo" && Z.aufg.typ === "nah") antwortNah(m, s, f);
+  else if (Z.modus === "lied") liedAntwort(m, s, f);
 });
 
 // --- Antworten mit der Gitarre ---
@@ -517,6 +815,15 @@ function gitTon(m) {
   } else if (Z.modus === "noten") {
     if (m !== A.e.m && pcVon(m) === pcVon(A.e.m)) rueck("Richtiger Ton, falsche Oktave (" + hoehe(m) + "). Die Gitarre klingt eine Oktave tiefer als notiert.", "schlecht");
     else antwortNote(m, null, null);
+  } else if (Z.modus === "theo") {
+    if (A.typ === "nah") {
+      if (m !== STIMMUNG[A.s] + A.f2 && pcVon(m) === A.ziel) rueck("Richtiger Ton, aber nicht diese Stelle (" + hoehe(m) + "). Bleib auf der " + SAITE_TEXT[A.s] + ".", "schlecht");
+      else antwortNah(m, null, null);
+    } else if (A.typ !== "hg") antwortTheo(pcVon(m), document.querySelector('#wahl .ton[data-w="' + pcVon(m) + '"]'));
+  } else if (Z.modus === "lied") {
+    const n = Z.lied.t[Z.lied.pos];
+    if (n && m !== n.m && pcVon(m) === pcVon(n.m)) rueck("Richtiger Ton, falsche Oktave (" + hoehe(m) + "). Gesucht: " + SAITE[n.lage.s] + "-Saite, " + (n.lage.f ? "Bund " + n.lage.f : "leer") + ".", "schlecht");
+    else liedAntwort(m, null, null);
   }
 }
 function gitAkkord(werte) {                                       // werte: Aehnlichkeit je Akkord der Stufe
@@ -643,6 +950,8 @@ async function quellenListe() {
 
 // ================= Bedienung =================
 function stufenZeigen() {
+  $("stufenZeile").classList.toggle("weg", Z.modus === "lied");
+  if (Z.modus === "lied") return;
   const box = $("stufenKnoepfe"), n = stufe();
   box.innerHTML = "";
   for (let i = 1; i <= 4; i++) {
@@ -653,6 +962,7 @@ function stufenZeigen() {
   $("stufenText").textContent = S().t;
 }
 document.querySelectorAll("#modi button").forEach(b => b.addEventListener("click", () => {
+  liedStopp(); rueck("");
   Z.modus = b.dataset.modus; schreib("modus", Z.modus); Z.wiederhole = null; Z.aufg = null;
   document.querySelectorAll("#modi button").forEach(x => x.classList.toggle("an", x === b));
   stufenZeigen(); neueAufgabe();
@@ -661,18 +971,48 @@ $("gitKnopf").addEventListener("click", () => { ac(); $("gitPanel").classList.to
 $("gitVerbinden").addEventListener("click", () => gitVerbinden());
 $("gitTrennen").addEventListener("click", () => gitTrennen(false));
 $("gitQuelle").addEventListener("change", () => { if (Z.git) gitVerbinden(); });
+// Griffbrett neu aufbauen (andere Ansicht, Geraet gedreht) und die laufende Aufgabe wieder hinstellen
+function neuZeichnen() {
+  Z.G = null;
+  if (Z.modus === "lied") liedZeigen();
+  else if (Z.frei && Z.aufg) { Z.wiederhole = Z.aufg; neueAufgabe(); }
+  else brettZeichnen();
+}
+$("ansichtKnopf").addEventListener("click", () => {
+  const folge = ["tab", "spieler", "hoch"];
+  schreib("ansicht", folge[(folge.indexOf(ansicht()) + 1) % 3]);
+  neuZeichnen();
+});
 let drehT = 0;
-window.addEventListener("resize", () => { clearTimeout(drehT); drehT = setTimeout(() => { const alt = Z.G && Z.G.hoch; if (Z.G && geometrie(Z.brettBis).hoch !== alt && Z.frei) { Z.G = null; Z.wiederhole = Z.aufg; neueAufgabe(); } }, 200); });
+window.addEventListener("resize", () => { clearTimeout(drehT); drehT = setTimeout(() => { if (Z.G && geometrie(Z.brettBis).key !== Z.G.key) neuZeichnen(); }, 200); });
+
+// Theorie: Schaubild der Stammtoene und Knoepfe je Saite
+(function () {
+  const namen = ["C", "D", "E", "F", "G", "A", "H", "C"];
+  $("leiter").innerHTML = namen.map((n, i) => "<b>" + n + "</b>" + (i < 7 ? (DUR[i] === 1 ? '<i class="halb">½</i>' : "<i>1</i>") : "")).join("");
+  ALLE6.forEach(s => {
+    const b = document.createElement("button"); b.className = "knopf rund"; b.textContent = SAITE[s]; b.setAttribute("aria-label", "Stammtöne auf der " + SAITE_TEXT[s] + " zeigen");
+    b.onclick = () => { ac(); stammtoeneZeigen(s); };
+    $("theoSaiten").appendChild(b);
+  });
+  const d = $("theoText"); d.open = !!lies("theoOffen", true);
+  d.addEventListener("toggle", () => schreib("theoOffen", d.open));
+})();
+$("liedWahl").addEventListener("change", ev => { liedLaden(ev.target.value); liedZeigen(); });
+$("liedVor").addEventListener("click", () => liedVorspielen());
+$("liedNeu").addEventListener("click", () => { liedLaden(Z.lied.id); liedZeigen(); });
+$("liedHilfe").addEventListener("click", () => { schreib("liedHilfe", !lies("liedHilfe", true)); liedZeigen(); });
 
 // Start
-Z.modus = ["griff", "noten", "akk"].indexOf(lies("modus", "griff")) >= 0 ? lies("modus", "griff") : "griff";
+Z.modus = ["griff", "noten", "akk", "theo", "lied"].indexOf(lies("modus", "griff")) >= 0 ? lies("modus", "griff") : "griff";
 document.querySelectorAll("#modi button").forEach(x => x.classList.toggle("an", x.dataset.modus === Z.modus));
 stufenZeigen(); neueAufgabe();
 document.addEventListener("pointerdown", () => ac(), { once: true });
 
 // Fuer Tests
 window.GITARRE = { Z: Z, GIT: GIT, STUFEN: STUFEN, AKK: AKK, STIMMUNG: STIMMUNG, lagen: lagen, akkToene: akkToene, tonName: tonName, hoehe: hoehe, yin: yin,
-  aehnlichkeit: aehnlichkeit, neu: neueAufgabe, wo: antwortWo, note: antwortNote, name: antwortName, akk: antwortAkk, gitTon: gitTon, stufe: stufe };
+  aehnlichkeit: aehnlichkeit, neu: neueAufgabe, wo: antwortWo, note: antwortNote, name: antwortName, akk: antwortAkk, gitTon: gitTon, stufe: stufe,
+  theo: antwortTheo, nah: antwortNah, lied: liedAntwort, ansicht: ansicht, geometrie: geometrie };
 })();
 </script>
 <script src="../../zurueck.js"></script>

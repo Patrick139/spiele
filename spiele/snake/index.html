@@ -113,6 +113,7 @@
   var hiscore = 0;
   try { hiscore = parseInt(localStorage.getItem("snake.hiscore") || "0", 10) || 0; } catch (e) {}
   var muted = false;
+  try { muted = localStorage.getItem("snake.stumm") === "1"; } catch (e) {}
   var TOUCH = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
   var sperreBis = 0;            // kurz nach dem Tod startet Wischen/Tippen/Pfeiltaste noch keine neue Runde
   function darfStarten() { return state === "ready" || ((state === "over" || state === "win") && performance.now() > sperreBis); }
@@ -180,6 +181,7 @@
       reset(); state = "running";
     } else if (e.code === "KeyM") {
       muted = !muted;
+      try { localStorage.setItem("snake.stumm", muted ? "1" : "0"); } catch (e2) {}
     }
   });
 

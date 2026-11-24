@@ -1,6 +1,6 @@
 # Koreanisch lernen
 
-Lernkarten mit Wiederholung nach Intervall, erreichbar über die Lernecke (Kachel „Koreanisch“) oder direkt unter `spiele/lernen/koreanisch/`.
+Lernkarten mit Wiederholung nach Intervall und Themenübungen, erreichbar über die Lernecke (Kachel „Koreanisch“) oder direkt unter `spiele/lernen/koreanisch/`.
 
 ## Aufbau
 
@@ -10,6 +10,7 @@ Lernkarten mit Wiederholung nach Intervall, erreichbar über die Lernecke (Kache
 | `js/srs.js` | Wiederholungsabstände (FSRS 4.5, Standardgewichte) |
 | `js/kern.js` | Daten, Lernstand, Ton, Zusammenstellen der Lerneinheit |
 | `js/ansicht.js` | Oberfläche |
+| `js/ueben.js` | Themenübungen (Bereich „Üben“) |
 | `daten/a1_*.js`, `daten/a2_*.js`, `daten/b1_*.js` | Lerninhalte, ein Block je Datei |
 | `daten/grammatik*.js` | Grammatikteil: Grundlagen-Seiten, je Regel genauere Erklärung und Beispiele; eine Datei je Stufe oder Block (`grammatik.js` = A1, `grammatik_a2_1.js` = A2 Teil 1, `grammatik_a2_2.js` = A2 Teil 2, `grammatik_b1_1.js` = B1 Teil 1) |
 | `ton/*.mp3` | eine Tondatei je Wort und Satz |
@@ -17,11 +18,25 @@ Lernkarten mit Wiederholung nach Intervall, erreichbar über die Lernecke (Kache
 
 Der Lernstand liegt im Browser des Geräts (`localStorage`, Schlüssel `koreanisch_v1`). Übertragen auf ein anderes Gerät: Mehr → Sichern und Laden.
 
+Schutz des Lernstands:
+
+- Sicherungsdatei (Mehr → Sichern und Laden). Die Startseite erinnert daran, wenn die letzte Datei älter als 14 Tage ist.
+- Kopie im Browser (`koreanisch_v1_kopie`): einmal am Tag der Stand vom Tagesbeginn, außerdem vor „Alles löschen“ und vor dem Laden einer Datei. Wiederherstellen unter Mehr → Sichern und Laden.
+- Mehr → „Lernstand vor dem Löschen durch den Browser schützen“ bittet den Browser, die Daten der Seite nicht von selbst zu löschen.
+
+## Themenübungen
+
+Bereich „Üben“: ein Thema wählen (eine Lektion, die Grundlagen der Grammatik, die gemerkten oder die schwierigen Karten; von einer Grammatikseite aus auch eine einzelne Regel), dann eine Übungsart: Gemischt, Wörter, Wörter umgekehrt, Hören, Lückensätze, Sätze bauen, Grammatik, Karten durchgehen.
+
+- Die Übungen ändern den Lernstand der Lernkarten nicht. Gespeichert wird nur je Thema das letzte Ergebnis.
+- Grammatik-Aufgaben entstehen aus den Beispielen der Grammatikseiten: Die Stelle in eckigen Klammern wird zur Lücke, die falschen Antworten sind markierte Stellen anderer Beispiele (zuerst derselben Regel). Neue Beispiele mit Klammer werden damit von selbst zu Aufgaben.
+- Am Ende lässt sich, was auf Anhieb gewusst wurde, als bekannt in die Lernkarten eintragen (freiwillig).
+
 ## Inhalte ergänzen
 
 1. In `daten/` einen neuen Block anlegen (Vorlage: `a1_1.js`) oder in einer bestehenden Lektion Einträge **am Ende** der Liste anhängen.
 2. Nichts umreihen und nichts löschen: Die Kennung einer Karte ist Lektion plus Platz in der Liste (`a1-03w5`). Daran hängen Lernstand und Tondatei. Einen Eintrag stilllegen: durch `null` ersetzen.
-3. Neue Datendatei in `index.html` (Skript-Zeile) und in `sw.js` (Liste `DATEIEN`) eintragen, in `sw.js` die `VERSION` erhöhen.
+3. Neue Datendatei in `index.html` (Skript-Zeile, vor `js/ansicht.js`) und in `sw.js` (Liste `DATEIEN`) eintragen, in `sw.js` die `VERSION` erhöhen.
 4. Tondateien erzeugen (siehe unten).
 
 ## Tondateien erzeugen

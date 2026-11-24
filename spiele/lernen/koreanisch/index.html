@@ -90,7 +90,19 @@
   .pruef { border-top: 1px solid var(--linie); padding: 4px 0 10px; } .pruef .zeile { border: 0; padding: 8px 0 4px; } .pzeile { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; } .pzeile label { margin: 0; font-size: 14px; } .pzeile input[type=text] { flex: 1 1 200px; width: auto; margin: 0; padding: 7px 10px; font-size: 15px; }
   textarea { margin-top: 10px; font-size: 14px; }
   nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--karte); border-top: 1px solid var(--linie); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
-  nav button { flex: 1; max-width: 150px; padding: 14px 2px 13px; border: 0; background: none; color: var(--grau); font-size: 13.5px; border-top: 3px solid transparent; } nav button.an { color: var(--blau); font-weight: 650; border-top-color: var(--blau); }
+  nav button { flex: 1 1 0; min-width: 0; max-width: 150px; padding: 14px 0 13px; border: 0; background: none; color: var(--grau); font-size: 13.5px; border-top: 3px solid transparent; } nav button.an { color: var(--blau); font-weight: 650; border-top-color: var(--blau); }
+  @media (max-width: 420px) { nav button { font-size: 12px; letter-spacing: -.02em; } }
+  /* Themenübungen */
+  .zeile .d.kurz { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .etikett .thema { text-transform: none; letter-spacing: 0; }
+  .wahl.de { grid-template-columns: 1fr; } .wahl.de button { font-size: 16px; text-align: left; padding: 11px 12px; line-height: 1.35; }
+  .wahl button { position: relative; color: var(--tinte); }
+  .wahl button.gut { border-color: var(--gut); background: #e1eee2; color: var(--gut); font-weight: 600; }
+  .wahl button.schlecht { border-color: var(--schlecht); background: #f4e1dd; color: var(--schlecht); }
+  .wahl button.blass { opacity: .45; }
+  .wahl kbd { display: none; font: 11px system-ui, sans-serif; color: var(--grau); border: 1px solid var(--linie); border-radius: 4px; padding: 0 4px; margin-right: 8px; vertical-align: 2px; }
+  @media (hover: hover) and (pointer: fine) { .wahl kbd { display: inline-block; } }
+  #v-uebung .flaeche { justify-content: flex-start; padding-top: 22px; }
   /* Grammatik */
   .regelknopf { display: block; width: 100%; text-align: left; } .regelknopf b, .regelknopf span { display: block; }
   .karte > .regelknopf { background: none; border: 0; padding: 0; }
@@ -113,6 +125,9 @@
 <main>
   <section id="v-heute"></section>
   <section id="v-einheit" hidden></section>
+  <section id="v-ueben" hidden></section>
+  <section id="v-thema" hidden></section>
+  <section id="v-uebung" hidden></section>
   <section id="v-lektionen" hidden></section>
   <section id="v-lektion" hidden></section>
   <section id="v-abhaken" hidden></section>
@@ -123,6 +138,7 @@
 </main>
 <nav>
   <button data-akt="nav" data-ziel="heute">Heute</button>
+  <button data-akt="nav" data-ziel="ueben">Üben</button>
   <button data-akt="nav" data-ziel="lektionen">Lektionen</button>
   <button data-akt="nav" data-ziel="grammatik">Grammatik</button>
   <button data-akt="nav" data-ziel="karten">Karten</button>
@@ -140,5 +156,6 @@
 <script src="daten/grammatik_a2_2.js"></script>
 <script src="daten/grammatik_b1_1.js"></script>
 <script src="js/ansicht.js"></script>
+<script src="js/ueben.js"></script>
 </body>
 </html>

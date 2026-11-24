@@ -43,6 +43,15 @@
   #stage{background:var(--card);border-radius:16px;padding:12px 10px 6px;border:1px solid #26325a}
   #staffBox{min-height:190px;display:flex;align-items:center;justify-content:center}
   #staff{width:100%;max-width:460px;height:auto;display:block}
+  #staff.lied{max-width:660px}
+  #liedBar{display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  #liedBar button, #liedBar select{background:var(--card);border:1px solid #26325a;color:var(--dim);border-radius:11px;padding:8px 13px;font:inherit;font-size:14.5px;cursor:pointer}
+  #liedBar select{color:var(--ink);flex:1 1 220px;min-width:0;max-width:340px}
+  #liedBar button:hover{color:var(--ink)}
+  #liedBar button.on{background:var(--cyan);color:#06283a;font-weight:700;border-color:var(--cyan)}
+  @media (max-width:599px){ body.lieder h1 .sub{display:none} body.lieder #staffBox{min-height:150px} #liedBar select{flex-basis:100%;max-width:none} }
+  body.lieder #liedBar{display:flex}
+  body.lieder #hud, body.lieder #clefSeg, body.lieder #sharpWrap{display:none}
   #earbox{text-align:center;font-size:54px;padding:34px 0}
   #earbox .hint{display:block;font-size:15px;color:var(--dim);margin-top:10px}
   #replay{background:var(--card2);border:1px solid #2c3a66;color:var(--ink);border-radius:10px;
@@ -115,13 +124,21 @@
     <div class="seg" id="modeSeg">
       <button data-mode="lesen" class="on">👁 Lesen</button>
       <button data-mode="hoeren">🎧 Hören</button>
+      <button data-mode="lieder">🎵 Lieder</button>
     </div>
     <div class="seg" id="clefSeg">
       <button data-clef="violin" class="on">Violinschlüssel</button>
       <button data-clef="bass">Bassschlüssel</button>
     </div>
-    <label class="toggle"><input type="checkbox" id="sharpTgl"> <span id="sharpLbl">schwarze Tasten</span></label>
+    <label class="toggle" id="sharpWrap"><input type="checkbox" id="sharpTgl"> <span id="sharpLbl">schwarze Tasten</span></label>
     <button id="neuBtn">Neues Spiel</button>
+  </div>
+
+  <div id="liedBar">
+    <select id="liedWahl" aria-label="Lied wählen"></select>
+    <button id="liedVor">▶ Vorspielen</button>
+    <button id="liedNeu">↺ Von vorn</button>
+    <button id="liedHilfe">💡 Taste zeigen</button>
   </div>
 
   <div id="stage">
@@ -148,11 +165,13 @@
        Oder du hörst einen Ton — findest du die richtige Taste?</p>
     <p>Mit jeder richtigen Antwort kommen neue Töne dazu — drei Level:
        🌱 Einsteiger (Tasten beschriftet), ⚙️ Normal, 🚀 Experte
-       (große Klaviatur, ♯ und ♭). Violin- und Bassschlüssel, zwei Modi.</p>
+       (große Klaviatur, ♯ und ♭). Violin- und Bassschlüssel.</p>
+    <p>Unter 🎵 Lieder spielst du fünf einfache Lieder Ton für Ton nach.</p>
     <button id="startBtn">Los geht’s!</button>
   </div>
 </div>
 
+<script src="../../lieder.js"></script>
 <script>
 "use strict";
 // ---------------- Noten-Wissen (deutsche Namen: H statt B) ----------------
@@ -209,10 +228,22 @@ const S = { mode:"lesen", clef:"violin", diff:"normal", sharp:false, started:fal
             score:0, best:0, streak:0, level:1, correctTotal:0,
             current:null, locked:true, repeat:null, qStart:0,
             gen:0, ersteAntwort:false, wiederholung:false, gefragt:0, anhieb:0 };
-// gespeichert wird nur der Bestwert; die Trefferquote gilt fuer das laufende Spiel
-try{ S.best = JSON.parse(localStorage.getItem("notenrally")||"{}").best||0; }catch(e){}
+// Gespeichert werden Bestwert, Einstellungen (Stufe, Modus, Schluessel) und die geschafften Lieder; die Trefferquote gilt fuer das laufende Spiel.
+S.lied=null; S.liedId=""; S.liedHilfe=true; S.lieder={};
+try{
+  const g=JSON.parse(localStorage.getItem("notenrally")||"{}")||{};
+  S.best=g.best||0;
+  if(g.diff in {einsteiger:1,normal:1,expert:1}) S.diff=g.diff;
+  if(g.mode in {lesen:1,hoeren:1,lieder:1}) S.mode=g.mode;
+  if(g.clef in {violin:1,bass:1}) S.clef=g.clef;
+  S.sharp=!!g.sharp && S.diff!=="einsteiger";
+  if(typeof g.lied==="string") S.liedId=g.lied;
+  if(g.liedHilfe===false) S.liedHilfe=false;
+  if(g.lieder && typeof g.lieder==="object") S.lieder=g.lieder;
+}catch(e){}
 function save(){
-  try{ localStorage.setItem("notenrally", JSON.stringify({best:S.best})); }catch(e){}
+  try{ localStorage.setItem("notenrally", JSON.stringify({best:S.best,diff:S.diff,mode:S.mode,clef:S.clefVor||S.clef,sharp:S.sharp,
+    lied:S.liedId,liedHilfe:S.liedHilfe,lieder:S.lieder})); }catch(e){}
 }
 
 // ---------------- Klang ----------------
@@ -227,13 +258,14 @@ function playNote(m,when,dur,vol){
   const a=ac(); if(!a) return;
   const t=a.currentTime+when, f=440*Math.pow(2,(m-69)/12);
   if(!Number.isFinite(f)) return;
-  [[1,"triangle",1.4],[2,"sine",5]].forEach(([h,type,vf])=>{
+  return [[1,"triangle",1.4],[2,"sine",5]].map(([h,type,vf])=>{
     const o=a.createOscillator(), g=a.createGain();
     o.type=type; o.frequency.value=f*h;
     g.gain.setValueAtTime(0,t);
     g.gain.linearRampToValueAtTime(vol/vf,t+0.015);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur+.05);
+    return o;
   });
 }
 function sfxOk(){ playNote(76,0,.4,.25); playNote(83,.09,.5,.25); }
@@ -342,6 +374,115 @@ function renderStaff(midi){
   svg.appendChild(head);
 }
 
+// ---------------- Lieder ----------------
+// Melodien aus ../../lieder.js (gemeinsam mit der Gitarre). Das "c" der Melodie ist c′ (mittleres C); gespielt wird im Violinschluessel.
+// Zwei Takte je Zeile; die Zeile mit dem naechsten Ton wird gezeigt. Gespielte Toene gruen, der naechste gelb.
+const LIED_C=60, L_W=600, L_LINKS=104, L_TPZ=2;
+function liedLaden(id){
+  const lied=LIEDER.finde(id)||LIEDER.liste[0];
+  liedStopp();
+  S.lied={id:lied.id,titel:lied.titel,tempo:lied.tempo,t:LIEDER.toene(lied,LIED_C),pos:0,fehler:0,spielt:-1,osz:[],zeiten:[]};
+  S.liedId=lied.id; save();
+}
+function liedStopp(){
+  const L=S.lied; if(!L) return;
+  L.osz.forEach(o=>{ try{ o.stop(); }catch(e){ /* schon zu Ende */ } });
+  L.zeiten.forEach(clearTimeout);
+  L.osz=[]; L.zeiten=[]; L.spielt=-1;
+}
+function renderLied(){
+  const L=S.lied, svg=document.getElementById("staff"), yBottom=STAFF_TOP+4*GAP, base=CLEF_BASE.violin.baseStep;
+  svg.setAttribute("viewBox","0 -12 "+L_W+" 240"); svg.innerHTML="";
+  const strich=(x1,y1,x2,y2,farbe,w)=>svg.appendChild(el("line",{x1,y1,x2,y2,stroke:farbe,"stroke-width":w||1.6}));
+  for(let i=0;i<5;i++) strich(LINIE_L,STAFF_TOP+i*GAP,L_W-20,STAFF_TOP+i*GAP,"#cfd6e4");
+  drawClef(svg);
+  const bei=Math.min(L.t.length-1, L.spielt>=0?L.spielt:L.pos), zeile=Math.floor(L.t[bei].takt/L_TPZ), takte=L.t[L.t.length-1].takt+1;
+  const tb=(L_W-20-L_LINKS)/L_TPZ, namen=S.diff==="einsteiger";
+  for(let k=1;k<=L_TPZ;k++) strich(L_LINKS+k*tb,STAFF_TOP,L_LINKS+k*tb,yBottom,"#93a0bd",k===L_TPZ&&zeile*L_TPZ+L_TPZ>=takte?4:1.6);
+  // Platz je Note nach Dauer, aber nicht streng im Verhaeltnis: Achtel brauchen mehr als die Haelfte einer Viertel, sonst stossen sie zusammen
+  const platz=d=>d<=0.5?0.7:d<=1?1:d<=1.5?1.3:d<=2?1.5:2.2, summe={};
+  L.t.forEach(n=>{ summe[n.takt]=(summe[n.takt]||0)+platz(n.dauer); });
+  let schlag=0, takt=-1;
+  L.t.forEach((n,i)=>{
+    if(n.takt!==takt){ takt=n.takt; schlag=0; }
+    const vor=schlag; schlag+=platz(n.dauer);
+    if(Math.floor(n.takt/L_TPZ)!==zeile) return;
+    const x=L_LINKS+(n.takt%L_TPZ)*tb+26+vor/summe[n.takt]*(tb-30), step=whiteStep(n.m), y=yBottom-(step-base)*HALF;
+    const farbe = L.spielt<0&&i<L.pos ? "#5ad17a" : i===bei&&L.pos<L.t.length ? "#ffd75e" : "#cfd6e4";
+    for(let k=1;k<=4;k++){
+      if(step<=base-2*k) strich(x-15,yBottom+k*GAP,x+15,yBottom+k*GAP,"#cfd6e4");
+      if(step>=base+10+2*(k-1)) strich(x-15,STAFF_TOP-k*GAP,x+15,STAFF_TOP-k*GAP,"#cfd6e4");
+    }
+    const hohl=n.dauer>=2, hoch=step<base+4, sx=hoch?x+9.3:x-9.3, sy=hoch?y-46:y+46;
+    if(n.dauer<4) strich(sx,hoch?y-2:y+2,sx,sy,farbe,2.2);
+    if(n.dauer===0.5) svg.appendChild(el("path",{d:hoch?`M ${sx} ${sy} c 2 12 13 13 9 28`:`M ${sx} ${sy} c 2 -12 13 -13 9 -28`,stroke:farbe,fill:"none","stroke-width":2.4,"stroke-linecap":"round"}));
+    svg.appendChild(el("ellipse",{cx:x,cy:y,rx:hohl?9.6:10.5,ry:hohl?6.9:7.8,fill:hohl?"none":farbe,stroke:farbe,"stroke-width":hohl?2.6:0,transform:`rotate(-18 ${x} ${y})`}));
+    if(n.dauer===1.5) svg.appendChild(el("circle",{cx:x+17,cy:(step-base)%2===0?y-HALF:y,r:2.6,fill:farbe}));
+    if(namen){ const tx=el("text",{x,y:218,"text-anchor":"middle","font-size":15,"font-weight":700,fill:farbe}); tx.textContent=n.name; svg.appendChild(tx); }
+  });
+  const info=el("text",{x:L_W-20,y:2,"text-anchor":"end","font-size":13,fill:"#93a0bd"});
+  info.textContent="Takt "+(zeile*L_TPZ+1)+" bis "+Math.min(takte,zeile*L_TPZ+L_TPZ)+" von "+takte; svg.appendChild(info);
+}
+function liedZeigen(){
+  const L=S.lied, wahl=document.getElementById("liedWahl");
+  if(!wahl.options.length) LIEDER.liste.forEach(l=>{ const o=document.createElement("option"); o.value=l.id; wahl.appendChild(o); });
+  LIEDER.liste.forEach((l,i)=>{ wahl.options[i].textContent=(l.id in S.lieder?"✓ ":"")+l.titel; });
+  wahl.value=L.id;
+  document.getElementById("liedHilfe").classList.toggle("on",S.liedHilfe);
+  document.getElementById("liedVor").textContent=L.spielt>=0?"■ Stopp":"▶ Vorspielen";
+  renderLied();
+  document.querySelectorAll("#kb .hint").forEach(x=>x.classList.remove("hint"));
+  if(S.liedHilfe && L.spielt<0 && L.pos<L.t.length){ const k=keyByMidi(L.t[L.pos].m); if(k) k.classList.add("hint"); }
+  renderStats();
+}
+function liedAntwort(midi){
+  const L=S.lied;
+  if(!S.started || !L || L.spielt>=0) return null;
+  playNote(midi,0,.9,.4);
+  if(L.pos>=L.t.length) return null;                  // Lied ist zu Ende: frei klimpern
+  const n=L.t[L.pos], ok=midi===n.m;
+  if(ok){
+    flash(midi,"flash-ok"); L.pos++;
+    if(L.pos>=L.t.length){
+      if(!(L.id in S.lieder) || L.fehler<S.lieder[L.id]) S.lieder[L.id]=L.fehler;
+      save(); confetti(); setTimeout(sfxOk,450);
+      setFeedback(`<b>Geschafft!</b> „${L.titel}“ ${L.fehler? "mit "+L.fehler+(L.fehler===1?" Fehler":" Fehlern") : "ohne Fehler"}. Mit ▶ hörst du das ganze Lied.`,"","😄","fok");
+    }else setFeedback("Weiter so.","","🙂","");
+  }else{
+    L.fehler++; flash(midi,"flash-bad");
+    setFeedback(`Das war <b>${zeigName(mkEntry(midi))}</b>, gesucht ist <b>${zeigName(mkEntry(n.m))}</b>.`,"","😅","fbad");
+  }
+  liedZeigen();
+  return ok;
+}
+function liedVorspielen(){
+  const L=S.lied;
+  if(L.spielt>=0){ liedStopp(); liedZeigen(); return; }
+  if(!ac()) return;
+  const sek=60/L.tempo; let t=0.15;
+  L.spielt=0;
+  L.t.forEach((n,i)=>{
+    (playNote(n.m,t,Math.max(.35,n.dauer*sek*1.1),.4)||[]).forEach(o=>L.osz.push(o));
+    L.zeiten.push(setTimeout(()=>{ L.spielt=i; liedZeigen(); flash(n.m,"flash-ok"); },t*1000));
+    t+=n.dauer*sek;
+  });
+  L.zeiten.push(setTimeout(()=>{ L.spielt=-1; L.osz=[]; L.zeiten=[]; liedZeigen(); },t*1000+500));
+  setFeedback("Zuhören …","","🎵","");
+  liedZeigen();
+}
+// Anzeige an den Modus anpassen (Lieder: kein Punktestand, immer Violinschluessel)
+function modusUi(){
+  const lieder=S.mode==="lieder";
+  document.body.classList.toggle("lieder",lieder);
+  document.getElementById("staff").classList.toggle("lied",lieder);
+  if(!lieder){ liedStopp(); document.getElementById("staff").setAttribute("viewBox","0 -12 380 214"); }
+  if(lieder && S.clef!=="violin"){ S.clefVor=S.clef; S.clef="violin"; buildKb(); }
+  else if(!lieder && S.clefVor){ S.clef=S.clefVor; S.clefVor=null; buildKb(); }
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.toggle("on",x.dataset.mode===S.mode));
+  document.querySelectorAll("#clefSeg button").forEach(x=>x.classList.toggle("on",x.dataset.clef===S.clef));
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.toggle("on",x.dataset.diff===S.diff));
+}
+
 // ---------------- Tastatur aufbauen ----------------
 function keyByMidi(m){ return document.querySelector(`#kb [data-midi="${m}"]`); }
 function buildKb(){
@@ -384,6 +525,16 @@ const PRAISE=["Top!","Genau!","Perfekt!","Stark!","Weiter so!","Klasse!","Ja!"];
 function startQuestion(){
   S.locked=false; S.qStart=Date.now();
   const gen=++S.gen;                     // alte Zeitgeber (Tipp, naechste Frage) laufen ins Leere
+  if(S.mode==="lieder"){                 // Lieder: kein Fragen-Ablauf, das Lied selbst fuehrt
+    if(!S.lied) liedLaden(S.liedId);
+    document.getElementById("staff").style.display="block";
+    document.getElementById("earbox").style.display="none";
+    document.getElementById("replay").style.display="none";
+    tastenBeschriften();
+    if(S.lied.pos===0 && S.lied.spielt<0) setFeedback("Spiel den gelben Ton.","","🙂","");
+    liedZeigen();
+    return;
+  }
   document.querySelectorAll("#kb .hint").forEach(x=>x.classList.remove("hint"));
   S.ersteAntwort=true; S.wiederholung=(S.repeat!=null);
   let e;
@@ -450,6 +601,7 @@ function ptsUp(pts){
   });
 }
 function answer(midi){
+  if(S.mode==="lieder") return liedAntwort(midi);
   if(!S.started || S.locked) return null;
   const cur=S.current, target=cur.m;
   const ok = (midi===target);
@@ -498,8 +650,10 @@ function updateHud(){
   document.getElementById("chipStreak").classList.toggle("flame",S.streak>=3);
 }
 function renderStats(){
+  const L=S.lied;
   document.getElementById("stats").textContent =
-    S.gefragt? `Auf Anhieb richtig: ${S.anhieb} von ${S.gefragt}` : "";
+    S.mode==="lieder" ? (L ? (L.pos>=L.t.length ? "Lied zu Ende" : `Ton ${L.pos+1} von ${L.t.length}`)+(L.fehler?` · Fehler: ${L.fehler}`:"") : "")
+    : S.gefragt? `Auf Anhieb richtig: ${S.anhieb} von ${S.gefragt}` : "";
 }
 function submit(m){ answer(m); }   // Klick-/Tastatur-Eingang
 // Computertastatur (deutsches Layout): A S D F G H J K L Ö Ä = weisse Tasten, W E R T Z U I O P Ü = schwarze dazwischen.
@@ -509,7 +663,7 @@ const BGAP={w:0,e:1,r:2,t:3,z:4,u:5,i:6,o:7,p:8,"ü":9};
 function tastenBelegung(){
   const [lo,hi]=kbRange(), whites=[];
   for(let m=lo;m<=hi;m++) if(isWhite(m)) whites.push(m);
-  const tief=DIFFS[S.diff].ranges[S.clef][S.level-1][0];
+  const tief=S.mode==="lieder" ? 55 : DIFFS[S.diff].ranges[S.clef][S.level-1][0];   // Lieder reichen vom g bis zum c″
   let start=whites.findIndex(m=>m>=tief); if(start<0) start=0;
   start=Math.max(0,Math.min(start,whites.length-WMAP.length));
   const belegung={};
@@ -535,17 +689,16 @@ document.addEventListener("keydown",ev=>{
 document.getElementById("modeSeg").addEventListener("click",ev=>{
   const b=ev.target.closest("button"); if(!b) return;
   S.mode=b.dataset.mode;
-  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.toggle("on",x===b));
-  startQuestion();
+  modusUi(); save(); startQuestion();
 });
 document.getElementById("clefSeg").addEventListener("click",ev=>{
   const b=ev.target.closest("button"); if(!b) return;
   S.clef=b.dataset.clef;
   document.querySelectorAll("#clefSeg button").forEach(x=>x.classList.toggle("on",x===b));
-  buildKb(); startQuestion();
+  buildKb(); save(); startQuestion();
 });
 document.getElementById("sharpTgl").addEventListener("change",ev=>{
-  S.sharp=ev.target.checked; startQuestion();
+  S.sharp=ev.target.checked; save(); startQuestion();
 });
 function syncSharpCtl(){
   const t=document.getElementById("sharpTgl"), l=document.getElementById("sharpLbl");
@@ -558,12 +711,17 @@ document.getElementById("diffSeg").addEventListener("click",ev=>{
   const b=ev.target.closest("button"); if(!b) return;
   S.diff=b.dataset.diff;
   document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.toggle("on",x===b));
-  syncSharpCtl(); buildKb(); S.level=Math.min(S.level,4); startQuestion();
+  syncSharpCtl(); buildKb(); S.level=Math.min(S.level,4); save(); startQuestion();
 });
 document.getElementById("neuBtn").addEventListener("click",()=>{
   S.score=0;S.streak=0;S.level=1;S.correctTotal=0;S.gefragt=0;S.anhieb=0;
+  if(S.mode==="lieder" && S.lied) liedLaden(S.lied.id);
   updateHud();renderStats();startQuestion();
 });
+document.getElementById("liedWahl").addEventListener("change",ev=>{ liedLaden(ev.target.value); setFeedback("Spiel den gelben Ton.","","🙂",""); liedZeigen(); });
+document.getElementById("liedVor").addEventListener("click",()=>liedVorspielen());
+document.getElementById("liedNeu").addEventListener("click",()=>{ liedLaden(S.lied.id); setFeedback("Spiel den gelben Ton.","","🙂",""); liedZeigen(); });
+document.getElementById("liedHilfe").addEventListener("click",()=>{ S.liedHilfe=!S.liedHilfe; save(); liedZeigen(); });
 document.getElementById("replay").addEventListener("click",()=>{
   if(S.current!=null) playNote(S.current.m,0,1.3,.45);
 });
@@ -573,8 +731,8 @@ window.GAME={
   get score(){return S.score}, set score(v){S.score=v;updateHud()},
   get streak(){return S.streak}, set streak(v){S.streak=v;updateHud()},
   get level(){return S.level}, set level(v){S.level=Math.max(1,Math.min(4,v));updateHud()},
-  get mode(){return S.mode}, set mode(v){S.mode=v;
-    document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.toggle("on",x.dataset.mode===v));},
+  get mode(){return S.mode}, set mode(v){S.mode=v; modusUi();},
+  get lied(){return S.lied}, liedLaden:id=>{liedLaden(id);liedZeigen();},
   get clef(){return S.clef}, set clef(v){S.clef=v;buildKb();
     document.querySelectorAll("#clefSeg button").forEach(x=>x.classList.toggle("on",x.dataset.clef===v));},
   get sharp(){return S.sharp}, set sharp(v){S.sharp=(!!v)&&S.diff!=="einsteiger";},
@@ -602,7 +760,10 @@ document.getElementById("startBtn").addEventListener("click",()=>{
   document.getElementById("intro").style.display="none";
   buildKb(); startQuestion(); updateHud(); renderStats();
 });
-buildKb(); updateHud(); renderStats();
+document.getElementById("sharpTgl").checked=S.sharp;
+syncSharpCtl(); modusUi(); buildKb(); updateHud(); renderStats();
+// Offline-Ablage auch bei direktem Einstieg (Lesezeichen) einrichten
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../../../sw.js").catch(()=>{});
 </script>
 </body>
 </html>
